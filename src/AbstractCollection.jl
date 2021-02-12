@@ -5,6 +5,9 @@ Supertype for collections.
 """
 abstract type AbstractCollection{rank} end
 
+whichrank(::AbstractCollection{rank}) where {rank} = rank
+whichrank(::Type{<: AbstractCollection{rank}}) where {rank} = rank
+
 Base.eltype(c::AbstractCollection) = typeof(first(c)) # try to getindex
 # Above eltype throws error if collection is empty.
 # `safe_eltype` returns `Union{}` for that case.
@@ -57,12 +60,16 @@ end
 Broadcast.broadcastable(c::AbstractCollection) = c
 Broadcast.BroadcastStyle(::Type{<: AbstractCollection}) = Broadcast.DefaultArrayStyle{1}()
 
-function Base.show(io::IO, c::AbstractCollection{rank}) where {rank}
-    io = IOContext(io, :typeinfo => safe_eltype(c))
-    print(io, "<", length(c), " × ", safe_eltype(c), ">[")
-    join(io, [isassigned(c, i) ? sprint(show, c[i]; context=io) : "#undef" for i in eachindex(c)], ", ")
-    print(io, "]")
-    if !get(io, :compact, false)
-        print(io, " with rank=$rank")
-    end
+show_type_name(c::AbstractCollection) = typeof(c)
+Base.summary(io::IO, c::AbstractCollection) =
+    print(io, Base.dims2string(size(c)), " ", show_type_name(c), " with rank=", whichrank(c), ":")
+
+function Base.show(io::IO, mime::MIME"text/plain", c::AbstractCollection)
+    summary(io, c)
+    println(io)
+    Base.print_array(io, Array(c))
+end
+
+function Base.show(io::IO, c::AbstractCollection)
+    print(io, collect(c))
 end
