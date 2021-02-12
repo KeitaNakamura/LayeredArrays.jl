@@ -1,0 +1,4 @@
+name = "LazyCollections"
+uuid = "79e1fe28-acea-40c6-a871-ce7bc59311e1"
+authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
+version = "0.1.0"
