@@ -57,8 +57,7 @@ function Base.isassigned(c::AbstractCollection, i)
 end
 
 # broadcast
-Broadcast.broadcastable(c::AbstractCollection) = c
-Broadcast.BroadcastStyle(::Type{<: AbstractCollection}) = Broadcast.DefaultArrayStyle{1}()
+Broadcast.broadcastable(c::AbstractCollection) = error("AbstractCollection: Broadcast is not supported")
 
 show_type_name(c::AbstractCollection) = typeof(c)
 Base.summary(io::IO, c::AbstractCollection) =
