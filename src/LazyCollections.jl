@@ -10,6 +10,9 @@ export
     Collection,
 # LazyCollection
     LazyCollection,
+    LazyOperationType,
+    LazyAddLikeOperator,
+    LazyMulLikeOperator,
     lazy
 
 include("utils.jl")

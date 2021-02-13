@@ -128,7 +128,7 @@ end
         @inbounds c.f($(exps...))
     end
 end
-@inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, 2}, i::Int) where {Args}
+@inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, 2}, i::Int)
     @boundscheck checkbounds(c, i)
     @inbounds begin
         I = CartesianIndices(size(c))[i...]
