@@ -1,6 +1,6 @@
 @testset "LazyCollection" begin
-    data1 = [1,2,3]
     # rank = 1
+    data1 = [1,2,3]
     rank1 = Collection(data1)
     @test (@inferred 2 * rank1)::LazyCollection{1} == 2 * data1
     @test (@inferred rank1 / 2)::LazyCollection{1} == data1 / 2

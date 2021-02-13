@@ -3,9 +3,10 @@
 
 This needs to be overrided for custom operator.
 """
-multiply_precedence(::Type) = false
-multiply_precedence(::Type{F}) where {F <: Function} =
-    Base.operator_precedence(Symbol(F.instance)) ≥ Base.operator_precedence(:*)
+multiply_precedence(::Any) = false
+multiply_precedence(f::Function) =
+    Base.operator_precedence(Symbol(f)) ≥ Base.operator_precedence(:*)
+multiply_precedence(::Type{F}) where {F <: Function} = multiply_precedence(F.instance)
 
 # add `Ref`s
 lazyable_add(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
