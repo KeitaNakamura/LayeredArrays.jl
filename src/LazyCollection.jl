@@ -1,28 +1,3 @@
-# add `Ref`s
-_lazyable(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
-_lazyable(c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
-_lazyable(c, ::Val) = Ref(c)
-_lazyable(c::Base.RefValue, ::Val) = c
-@generated function lazyables(args...)
-    rank = maximum(whichrank, args)
-    if minimum(whichrank, args) == -1
-        if rank != -1
-            return :(throw(ArgumentError("rank=-1 collection cannot be computed with other rank collections.")))
-        end
-    end
-    quote
-        broadcast(_lazyable, args, Val($rank))
-    end
-end
-lazyables(args′::Union{Base.RefValue, AbstractCollection{rank}}...) where {rank} = args′ # already "lazyabled"
-
-# extract arguments without `Ref`
-_extract_norefs(ret::Tuple) = ret
-_extract_norefs(ret::Tuple, x::Ref, y...) = _extract_norefs(ret, y...)
-_extract_norefs(ret::Tuple, x, y...) = _extract_norefs((ret..., x), y...)
-extract_norefs(x...) = _extract_norefs((), x...)
-extract_norefs(x::AbstractCollection...) = x
-
 """
     LazyCollections.multiply_precedence(::Type) -> Bool
 
@@ -32,6 +7,36 @@ multiply_precedence(::Type) = false
 multiply_precedence(::Type{F}) where {F <: Function} =
     Base.operator_precedence(Symbol(F.instance)) ≥ Base.operator_precedence(:*)
 
+# add `Ref`s
+lazyable_add(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable_add(c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
+lazyable_add(c, ::Val) = Ref(c)
+lazyable_add(c::Base.RefValue, ::Val) = c
+lazyable_mul(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable_mul(c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
+lazyable_mul(c, ::Val) = Ref(c)
+lazyable_mul(c::Base.RefValue, ::Val) = c
+@generated function lazyables(f, args...)
+    rank = maximum(whichrank, args)
+    mulprec = multiply_precedence(f)
+    if minimum(whichrank, args) == -1
+        if rank != -1
+            return :(throw(ArgumentError("rank=-1 collection cannot be computed with other rank collections.")))
+        end
+    end
+    quote
+        $(mulprec ? :(broadcast(lazyable_mul, args, Val($rank))) : :(broadcast(lazyable_add, args, Val($rank))))
+    end
+end
+lazyables(f, args′::Union{Base.RefValue, AbstractCollection{rank}}...) where {rank} = args′ # already "lazyabled"
+
+# extract arguments without `Ref`
+_extract_norefs(ret::Tuple) = ret
+_extract_norefs(ret::Tuple, x::Ref, y...) = _extract_norefs(ret, y...)
+_extract_norefs(ret::Tuple, x, y...) = _extract_norefs((ret..., x), y...)
+extract_norefs(x...) = _extract_norefs((), x...)
+extract_norefs(x::AbstractCollection...) = x
+
 """
     return_rank(f, args...)
 
@@ -40,7 +45,7 @@ Get returned rank.
 @generated function return_rank(f, args...)
     mulprec = multiply_precedence(f)
     quote
-        args′ = extract_norefs(lazyables(args...)...)
+        args′ = extract_norefs(lazyables(f, args...)...)
         $(mulprec ? :(return_rank_mul(args′...)) : :(return_rank_add(args′...)))
     end
 end
@@ -62,7 +67,7 @@ Get returned dimensions.
 @generated function return_dims(f, args...)
     mulprec = multiply_precedence(f)
     quote
-        args′ = extract_norefs(lazyables(args...)...)
+        args′ = extract_norefs(lazyables(f, args...)...)
         $(mulprec ? :(return_dims_mul(args′...)) : :(return_dims_add(args′...)))
     end
 end
@@ -89,7 +94,7 @@ end
 
 @generated function LazyCollection(f, args...)
     quote
-        args′ = lazyables(args...)
+        args′ = lazyables(f, args...)
         norefs = extract_norefs(args′...)
         rank = return_rank(f, norefs...)
         dims = return_dims(f, norefs...)
