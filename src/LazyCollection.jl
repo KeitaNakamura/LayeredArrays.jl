@@ -1,33 +1,33 @@
 """
-    LazyCollections.multiply_precedence(::Type) -> Bool
+    LazyCollections.LazyOperationType(f)
 
 This needs to be overrided for custom operator.
+Return `LazyAddLikeOperator()` or `LazyMulLikeOperator()`.
 """
-multiply_precedence(::Any) = false
-multiply_precedence(f::Function) =
-    Base.operator_precedence(Symbol(f)) ≥ Base.operator_precedence(:*)
-multiply_precedence(::Type{F}) where {F <: Function} = multiply_precedence(F.instance)
+abstract type LazyOperationType end
+struct LazyAddLikeOperator <: LazyOperationType end
+struct LazyMulLikeOperator <: LazyOperationType end
+LazyOperationType(::Any) = LazyAddLikeOperator()
+@pure function LazyOperationType(f::Function)
+    Base.operator_precedence(Symbol(f)) ≥ Base.operator_precedence(:*) ?
+        LazyMulLikeOperator() : LazyAddLikeOperator()
+end
 
 # add `Ref`s
-lazyable_add(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
-lazyable_add(c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
-lazyable_add(c, ::Val) = Ref(c)
-lazyable_add(c::Base.RefValue, ::Val) = c
-lazyable_mul(c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
-lazyable_mul(c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
-lazyable_mul(c, ::Val) = Ref(c)
-lazyable_mul(c::Base.RefValue, ::Val) = c
+lazyable(::LazyOperationType, c, ::Val) = Ref(c)
+lazyable(::LazyOperationType, c::Base.RefValue, ::Val) = c
+lazyable(::LazyAddLikeOperator, c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable(::LazyAddLikeOperator, c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
+lazyable(::LazyMulLikeOperator, c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable(::LazyMulLikeOperator, c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
 @generated function lazyables(f, args...)
     rank = maximum(whichrank, args)
-    mulprec = multiply_precedence(f)
     if minimum(whichrank, args) == -1
         if rank != -1
             return :(throw(ArgumentError("rank=-1 collection cannot be computed with other rank collections.")))
         end
     end
-    quote
-        $(mulprec ? :(broadcast(lazyable_mul, args, Val($rank))) : :(broadcast(lazyable_add, args, Val($rank))))
-    end
+    Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($rank))) for i in 1:length(args)]...)
 end
 lazyables(f, args′::Union{Base.RefValue, AbstractCollection{rank}}...) where {rank} = args′ # already "lazyabled"
 
@@ -43,21 +43,18 @@ extract_norefs(x::AbstractCollection...) = x
 
 Get returned rank.
 """
-@generated function return_rank(f, args...)
-    mulprec = multiply_precedence(f)
-    quote
-        args′ = extract_norefs(lazyables(f, args...)...)
-        $(mulprec ? :(return_rank_mul(args′...)) : :(return_rank_add(args′...)))
-    end
+function return_rank(f, args...)
+    args′ = extract_norefs(lazyables(f, args...)...)
+    return_rank(LazyOperationType(f), args′...)
 end
-return_rank_add(::AbstractCollection{rank}...) where {rank} = rank
-return_rank_mul(::AbstractCollection{rank}...) where {rank} = rank
-return_rank_mul(::AbstractCollection{0}) = 0
-return_rank_mul(::AbstractCollection{0}, ::AbstractCollection{0}) = -1
-return_rank_mul(::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
+return_rank(::LazyAddLikeOperator, ::AbstractCollection{rank}...) where {rank} = rank
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{rank}...) where {rank} = rank
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}) = 0
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}) = -1
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
     throw(ArgumentError("rank=-1 collections are used $(2+length(x)) times in multiplication"))
-return_rank_mul(::AbstractCollection{-1}) = -1
-return_rank_mul(::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{-1}) = -1
+return_rank(::LazyMulLikeOperator, ::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
     throw(ArgumentError("rank=-1 collections are used $(1+length(x)) times in multiplication"))
 
 """
@@ -65,19 +62,16 @@ return_rank_mul(::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
 
 Get returned dimensions.
 """
-@generated function return_dims(f, args...)
-    mulprec = multiply_precedence(f)
-    quote
-        args′ = extract_norefs(lazyables(f, args...)...)
-        $(mulprec ? :(return_dims_mul(args′...)) : :(return_dims_add(args′...)))
-    end
+function return_dims(f, args...)
+    args′ = extract_norefs(lazyables(f, args...)...)
+    return_dims(LazyOperationType(f), args′...)
 end
 check_dims(x::Dims) = x
 check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-return_dims_add(args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
-return_dims_mul(args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
-return_dims_mul(x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
-return_dims_mul(x::AbstractCollection{-1}) = size(x)
+return_dims(::LazyAddLikeOperator, args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
+return_dims(::LazyMulLikeOperator, args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
+return_dims(::LazyMulLikeOperator, x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
+return_dims(::LazyMulLikeOperator, x::AbstractCollection{-1}) = size(x)
 
 
 struct LazyCollection{rank, F, Args <: Tuple, N} <: AbstractCollection{rank}
@@ -110,11 +104,12 @@ Base.ndims(c::LazyCollection) = length(size(c))
 
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
-@inline function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, 1}, i::Int)
-    @boundscheck checkbounds(c, i)
-    @inbounds begin
-        args = broadcast(_getindex, c.args, i)
-        c.f(args...)
+@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, Args, 1}, i::Int) where {Args}
+    exps = [:(_getindex(c.args[$j], i)) for j in 1:length(Args.parameters)]
+    quote
+        @_inline_meta
+        @boundscheck checkbounds(c, i)
+        @inbounds c.f($(exps...))
     end
 end
 

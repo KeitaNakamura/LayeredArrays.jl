@@ -1,6 +1,6 @@
 module LazyCollections
 
-using Base: @_propagate_inbounds_meta, @_inline_meta
+using Base: @_propagate_inbounds_meta, @_inline_meta, @pure
 
 export
 # AbstractCollection
