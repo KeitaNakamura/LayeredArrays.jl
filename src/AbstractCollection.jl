@@ -68,6 +68,23 @@ function set!(dest::Union{AbstractVector, AbstractCollection{rank}}, src::Abstra
     dest
 end
 
+# copied from Base
+function Base.:(==)(A::Union{AbstractArray, AbstractCollection}, B::Union{AbstractArray, AbstractCollection})
+    if axes(A) != axes(B)
+        return false
+    end
+    anymissing = false
+    for (a, b) in zip(A, B)
+        eq = (a == b)
+        if ismissing(eq)
+            anymissing = true
+        elseif !eq
+            return false
+        end
+    end
+    return anymissing ? missing : true
+end
+
 show_type_name(c::AbstractCollection) = typeof(c)
 Base.summary(io::IO, c::AbstractCollection) =
     print(io, Base.dims2string(size(c)), " ", show_type_name(c), " with rank=", whichrank(c), ":")
