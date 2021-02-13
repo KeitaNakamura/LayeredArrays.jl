@@ -7,6 +7,7 @@ abstract type AbstractCollection{rank} end
 
 whichrank(::AbstractCollection{rank}) where {rank} = rank
 whichrank(::Type{<: AbstractCollection{rank}}) where {rank} = rank
+whichrank(::Any) = -100 # just use low value
 
 Base.eltype(c::AbstractCollection) = typeof(first(c)) # try to getindex
 # Above eltype throws error if collection is empty.
