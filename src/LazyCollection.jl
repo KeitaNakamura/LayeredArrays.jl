@@ -32,32 +32,46 @@ multiply_precedence(::Type) = false
 multiply_precedence(::Type{F}) where {F <: Function} =
     Base.operator_precedence(Symbol(F.instance)) ≥ Base.operator_precedence(:*)
 
-_promote_rank(::Bool, ::AbstractCollection{rank}, ::AbstractCollection{rank}...) where {rank} = rank
-_promote_rank(::Bool, ::AbstractCollection{0}) = 0
-_promote_rank(::Bool, ::AbstractCollection{0}, ::AbstractCollection{0}, ::AbstractCollection{0}...) = error()
-_promote_rank(mulprec::Bool, ::AbstractCollection{0}, ::AbstractCollection{0}) = mulprec ? -1 : 0
-@generated function promote_rank(f, args...)
+"""
+    return_rank(f, args...)
+
+Get returned rank.
+"""
+@generated function return_rank(f, args...)
     mulprec = multiply_precedence(f)
     quote
         args′ = extract_norefs(lazyables(args...)...)
-        _promote_rank($mulprec, args′...)
+        $(mulprec ? :(return_rank_mul(args′...)) : :(return_rank_add(args′...)))
     end
 end
+return_rank_add(::AbstractCollection{rank}...) where {rank} = rank
+return_rank_mul(::AbstractCollection{rank}...) where {rank} = rank
+return_rank_mul(::AbstractCollection{0}) = 0
+return_rank_mul(::AbstractCollection{0}, ::AbstractCollection{0}) = -1
+return_rank_mul(::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
+    throw(ArgumentError("rank=-1 collections are used $(2+length(x)) times in multiplication"))
+return_rank_mul(::AbstractCollection{-1}) = -1
+return_rank_mul(::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
+    throw(ArgumentError("rank=-1 collections are used $(1+length(x)) times in multiplication"))
 
-# check if all `length`s are the same
-check_dims(x::Dims) = x
-check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-@generated function combine_dims(f, args...)
+"""
+    return_dims(f, args...)
+
+Get returned dimensions.
+"""
+@generated function return_dims(f, args...)
+    mulprec = multiply_precedence(f)
     quote
         args′ = extract_norefs(lazyables(args...)...)
-        rank = promote_rank(f, args′...)
-        if rank == -1
-            flatten_tuple(map(size, args′))
-        else
-            check_dims(map(size, args′)...)
-        end
+        $(mulprec ? :(return_dims_mul(args′...)) : :(return_dims_add(args′...)))
     end
 end
+check_dims(x::Dims) = x
+check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
+return_dims_add(args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
+return_dims_mul(args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
+return_dims_mul(x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
+return_dims_mul(x::AbstractCollection{-1}) = size(x)
 
 
 struct LazyCollection{rank, F, Args <: Tuple, N} <: AbstractCollection{rank}
@@ -77,8 +91,8 @@ end
     quote
         args′ = lazyables(args...)
         norefs = extract_norefs(args′...)
-        rank = promote_rank(f, norefs...)
-        dims = combine_dims(f, norefs...)
+        rank = return_rank(f, norefs...)
+        dims = return_dims(f, norefs...)
         LazyCollection{rank}(f, args′, dims)
     end
 end
@@ -88,7 +102,7 @@ Base.length(c::LazyCollection) = prod(c.dims)
 Base.size(c::LazyCollection) = c.dims
 Base.ndims(c::LazyCollection) = length(size(c))
 
-@inline _getindex(c::LazyCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
+@inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
 @inline function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, 1}, i::Int)
     @boundscheck checkbounds(c, i)
