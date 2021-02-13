@@ -2,9 +2,12 @@ module LazyCollections
 
 export
     AbstractCollection,
-    Collection
+    Collection,
+    ←
 
 include("AbstractCollection.jl")
 include("Collection.jl")
+
+const ← = set!
 
 end # module

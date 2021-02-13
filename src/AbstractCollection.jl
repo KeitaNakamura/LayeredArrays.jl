@@ -59,6 +59,14 @@ end
 # broadcast
 Broadcast.broadcastable(c::AbstractCollection) = error("AbstractCollection: Broadcast is not supported")
 
+function set!(dest::Union{AbstractVector, AbstractCollection{rank}}, src::AbstractCollection{rank}) where {rank}
+    @assert length(dest) == length(src)
+    @simd for i in 1:length(dest)
+        @inbounds dest[i] = src[i]
+    end
+    dest
+end
+
 show_type_name(c::AbstractCollection) = typeof(c)
 Base.summary(io::IO, c::AbstractCollection) =
     print(io, Base.dims2string(size(c)), " ", show_type_name(c), " with rank=", whichrank(c), ":")
