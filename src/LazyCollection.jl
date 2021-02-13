@@ -59,6 +59,7 @@ check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
     end
 end
 
+
 struct LazyCollection{rank, F, Args <: Tuple, N} <: AbstractCollection{rank}
     f::F
     args::Args
@@ -132,3 +133,39 @@ function Base.Array(c::LazyCollection)
 end
 
 show_type_name(c::LazyCollection) = "LazyCollection{$(whichrank(c))}"
+
+
+macro define_lazy_unary_operation(op)
+    quote
+        @inline $op(x::AbstractCollection) = lazy($op, x)
+    end |> esc
+end
+
+macro define_lazy_binary_operation(op)
+    quote
+        @inline $op(c::AbstractCollection, x) = lazy($op, c, x)
+        @inline $op(x, c::AbstractCollection) = lazy($op, x, c)
+        @inline $op(x::AbstractCollection, y::AbstractCollection) = lazy($op, x, y)
+    end |> esc
+end
+
+const unary_operations = [
+    :(Base.:+),
+    :(Base.:-),
+]
+
+const binary_operations = [
+    :(Base.:+),
+    :(Base.:-),
+    :(Base.:*),
+    :(Base.:/),
+    :(Base.:^),
+]
+
+for op in unary_operations
+    @eval @define_lazy_unary_operation $op
+end
+
+for op in binary_operations
+    @eval @define_lazy_binary_operation $op
+end
