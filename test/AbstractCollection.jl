@@ -13,5 +13,5 @@ Base.setindex!(m::MyType, v, i::Int) = setindex!(m.x, v, i)
     @test (@inferred collect(x))::Vector{Int} == [0,0,0]
     @test (@inferred Array(x))::Vector{Int} == [0,0,0]
     y = [1,2,3]
-    @test (@inferred y ← x)::Vector{Int} == [0,0,0]
+    @test (@inferred broadcast!(identity, y, x))::Vector{Int} == [0,0,0]
 end

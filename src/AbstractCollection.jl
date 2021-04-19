@@ -57,9 +57,6 @@ function Base.isassigned(c::AbstractCollection, i)
     end
 end
 
-# broadcast
-Broadcast.broadcastable(c::AbstractCollection) = error("AbstractCollection: Broadcast is not supported")
-
 function set!(dest::Union{AbstractVector, AbstractCollection{layer}}, src::AbstractCollection{layer}) where {layer}
     @assert length(dest) == length(src)
     @simd for i in 1:length(dest)

@@ -102,6 +102,18 @@ Base.length(c::LazyCollection) = prod(c.dims)
 Base.size(c::LazyCollection) = c.dims
 Base.ndims(c::LazyCollection) = length(size(c))
 
+@generated function _lazy(f, args...)
+    if any([t <: AbstractCollection for t in args])
+        quote
+            LazyCollection(f, args...)
+        end
+    else
+        quote
+            f(args...)
+        end
+    end
+end
+_lazy(f, arg) = f(arg)
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
 @generated function Base.getindex(c::LazyCollection{<: Any, <: Any, Args, 1}, i::Int) where {Args}
@@ -109,7 +121,7 @@ Base.ndims(c::LazyCollection) = length(size(c))
     quote
         @_inline_meta
         @boundscheck checkbounds(c, i)
-        @inbounds c.f($(exps...))
+        @inbounds _lazy(c.f, $(exps...))
     end
 end
 
@@ -125,7 +137,7 @@ end
     quote
         @_inline_meta
         @_propagate_inbounds_meta
-        @inbounds c.f($(exps...))
+        @inbounds _lazy(c.f, $(exps...))
     end
 end
 @inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, 2}, i::Int)
@@ -148,39 +160,3 @@ function Base.Array(c::LazyCollection)
 end
 
 show_type_name(c::LazyCollection) = "LazyCollection{$(whichlayer(c))}"
-
-
-macro define_lazy_unary_operation(op)
-    quote
-        @inline $op(x::AbstractCollection) = lazy($op, x)
-    end |> esc
-end
-
-macro define_lazy_binary_operation(op)
-    quote
-        @inline $op(c::AbstractCollection, x) = lazy($op, c, x)
-        @inline $op(x, c::AbstractCollection) = lazy($op, x, c)
-        @inline $op(x::AbstractCollection, y::AbstractCollection) = lazy($op, x, y)
-    end |> esc
-end
-
-const unary_operations = [
-    :(Base.:+),
-    :(Base.:-),
-]
-
-const binary_operations = [
-    :(Base.:+),
-    :(Base.:-),
-    :(Base.:*),
-    :(Base.:/),
-    :(Base.:^),
-]
-
-for op in unary_operations
-    @eval @define_lazy_unary_operation $op
-end
-
-for op in binary_operations
-    @eval @define_lazy_binary_operation $op
-end
