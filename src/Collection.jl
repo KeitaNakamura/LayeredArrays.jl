@@ -1,12 +1,12 @@
 """
     Collection(x, [Val(layer)])
 """
-struct Collection{layer, V} <: AbstractCollection{layer}
+struct Collection{layer, T, V <: Union{AbstractVector{T}, AbstractCollection{<: Any, T}}} <: AbstractCollection{layer, T}
     parent::V
 end
 
 # constructors
-Collection{layer}(v::V) where {layer, V} = Collection{layer, V}(v)
+Collection{layer}(v::V) where {layer, T, V <: Union{AbstractVector{T}, AbstractCollection{<: Any, T}}} = Collection{layer, T, V}(v)
 Collection(v) = Collection{1}(v)
 
 Base.parent(c::Collection) = c.parent

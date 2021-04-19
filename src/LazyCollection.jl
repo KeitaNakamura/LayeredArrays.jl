@@ -73,18 +73,22 @@ return_dims(::LazyMulLikeOperator, args::AbstractCollection{layer}...) where {la
 return_dims(::LazyMulLikeOperator, x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
 return_dims(::LazyMulLikeOperator, x::AbstractCollection{-1}) = size(x)
 
+@generated function return_type(f, args...)
+    :($(Base._return_type(_propagate_lazy, (f, eltype.(args)...)))) # `_propagate_lazy` is defined at getindex
+end
 
-struct LazyCollection{layer, F, Args <: Tuple, N} <: AbstractCollection{layer}
+
+struct LazyCollection{layer, T, F, Args <: Tuple, N} <: AbstractCollection{layer, T}
     f::F
     args::Args
     dims::NTuple{N, Int}
-    function LazyCollection{layer, F, Args, N}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, F, Args, N}
-        new{layer::Int, F, Args, N}(f, args, dims)
+    function LazyCollection{layer, T, F, Args, N}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, T, F, Args, N}
+        new{layer::Int, T, F, Args, N}(f, args, dims)
     end
 end
 
-@inline function LazyCollection{layer}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, F, Args, N}
-    LazyCollection{layer, F, Args, N}(f, args, dims)
+@inline function LazyCollection{layer, T}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, T, F, Args, N}
+    LazyCollection{layer, T, F, Args, N}(f, args, dims)
 end
 
 @generated function LazyCollection(f, args...)
@@ -93,7 +97,8 @@ end
         norefs = extract_norefs(args′...)
         layer = return_layer(f, norefs...)
         dims = return_dims(f, norefs...)
-        LazyCollection{layer}(f, args′, dims)
+        T = return_type(f, args′...)
+        LazyCollection{layer, T}(f, args′, dims)
     end
 end
 lazy(f, args...) = LazyCollection(f, args...)
@@ -102,30 +107,25 @@ Base.length(c::LazyCollection) = prod(c.dims)
 Base.size(c::LazyCollection) = c.dims
 Base.ndims(c::LazyCollection) = length(size(c))
 
-@generated function _lazy(f, args...)
-    if any([t <: AbstractCollection for t in args])
-        quote
-            LazyCollection(f, args...)
-        end
-    else
-        quote
-            f(args...)
-        end
-    end
+# this propagates lazy operation when any AbstractCollection is found
+# otherwise just normally call function `f`.
+@generated function _propagate_lazy(f, args...)
+    any([t <: AbstractCollection for t in args]) ?
+        :(LazyCollection(f, args...)) : :(f(args...))
 end
-_lazy(f, arg) = f(arg)
+_propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
-@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, Args, 1}, i::Int) where {Args}
+@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args, 1}, i::Int) where {Args}
     exps = [:(_getindex(c.args[$j], i)) for j in 1:length(Args.parameters)]
     quote
         @_inline_meta
         @boundscheck checkbounds(c, i)
-        @inbounds _lazy(c.f, $(exps...))
+        @inbounds _propagate_lazy(c.f, $(exps...))
     end
 end
 
-@generated function Base.getindex(c::LazyCollection{-1, <: Any, Args, 2}, ij::Vararg{Int, 2}) where {Args}
+@generated function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, Args, 2}, ij::Vararg{Int, 2}) where {Args}
     count = 0
     exps = map(enumerate(Args.parameters)) do (k, T)
         T <: Base.RefValue && return :(c.args[$k][])
@@ -137,10 +137,10 @@ end
     quote
         @_inline_meta
         @_propagate_inbounds_meta
-        @inbounds _lazy(c.f, $(exps...))
+        @inbounds _propagate_lazy(c.f, $(exps...))
     end
 end
-@inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, 2}, i::Int)
+@inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, <: Any, 2}, i::Int)
     @boundscheck checkbounds(c, i)
     @inbounds begin
         I = CartesianIndices(size(c))[i...]
@@ -159,4 +159,4 @@ function Base.Array(c::LazyCollection)
     A
 end
 
-show_type_name(c::LazyCollection) = "LazyCollection{$(whichlayer(c))}"
+show_type_name(c::LazyCollection{layer, T}) where {layer, T} = "LazyCollection{$layer, $T}"

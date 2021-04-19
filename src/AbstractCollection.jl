@@ -1,20 +1,16 @@
 """
-    AbstractCollection{layer}
+    AbstractCollection{layer, T}
 
 Supertype for collections.
 """
-abstract type AbstractCollection{layer} end
+abstract type AbstractCollection{layer, T} end
 
 whichlayer(::AbstractCollection{layer}) where {layer} = layer
 whichlayer(::Type{<: AbstractCollection{layer}}) where {layer} = layer
 whichlayer(::Any) = -100 # just use low value
 
-Base.eltype(c::AbstractCollection) = typeof(first(c)) # try to getindex
-# Above eltype throws error if collection is empty.
-# `safe_eltype` returns `Union{}` for that case.
-function safe_eltype(c::AbstractCollection)
-    isempty(c) ? Union{} : eltype(c)
-end
+Base.eltype(c::AbstractCollection{<: Any, T}) where {T} = T
+Base.eltype(c::Type{<: AbstractCollection{<: Any, T}}) where {T} = T
 
 function Base.fill!(c::AbstractCollection, v)
     @simd for i in eachindex(c)

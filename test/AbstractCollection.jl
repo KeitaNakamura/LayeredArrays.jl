@@ -1,4 +1,4 @@
-struct MyType{T} <: AbstractCollection{0}
+struct MyType{T} <: AbstractCollection{0, T}
     x::Vector{T}
 end
 Base.length(m::MyType) = length(m.x)
