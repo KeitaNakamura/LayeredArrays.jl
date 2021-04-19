@@ -1,5 +1,5 @@
 """
-    LazyCollections.LazyOperationType(f)
+    LayeredCollections.LazyOperationType(f)
 
 This needs to be overrided for custom operator.
 Return `LazyAddLikeOperator()` or `LazyMulLikeOperator()`.

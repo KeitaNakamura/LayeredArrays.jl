@@ -1,5 +1,5 @@
 myfunc(x::Int, y::Int, z::Int) = x * y * z
-LazyCollections.LazyOperationType(::typeof(myfunc)) = LazyCollections.LazyMulLikeOperator()
+LayeredCollections.LazyOperationType(::typeof(myfunc)) = LayeredCollections.LazyMulLikeOperator()
 myfunc(x, y, z) = lazy(myfunc, x, y, z)
 ∑(x) = lazy(sum, x)
 
