@@ -1,4 +1,4 @@
-using LazyCollections
+using LayeredCollections
 using Test
 
 include("AbstractCollection.jl")

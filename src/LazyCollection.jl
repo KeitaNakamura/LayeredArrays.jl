@@ -1,5 +1,5 @@
 """
-    LazyCollections.LazyOperationType(f)
+    LayeredCollections.LazyOperationType(f)
 
 This needs to be overrided for custom operator.
 Return `LazyAddLikeOperator()` or `LazyMulLikeOperator()`.
@@ -16,20 +16,20 @@ end
 # add `Ref`s
 lazyable(::LazyOperationType, c, ::Val) = Ref(c)
 lazyable(::LazyOperationType, c::Base.RefValue, ::Val) = c
-lazyable(::LazyAddLikeOperator, c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable(::LazyAddLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
 lazyable(::LazyAddLikeOperator, c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
-lazyable(::LazyMulLikeOperator, c::AbstractCollection{rank}, ::Val{rank}) where {rank} = c
+lazyable(::LazyMulLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
 lazyable(::LazyMulLikeOperator, c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
 @generated function lazyables(f, args...)
-    rank = maximum(whichrank, args)
-    if minimum(whichrank, args) == -1
-        if rank != -1
-            return :(throw(ArgumentError("rank=-1 collection cannot be computed with other rank collections.")))
+    layer = maximum(whichlayer, args)
+    if minimum(whichlayer, args) == -1
+        if layer != -1
+            return :(throw(ArgumentError("layer=-1 collection cannot be computed with other layer collections.")))
         end
     end
-    Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($rank))) for i in 1:length(args)]...)
+    Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($layer))) for i in 1:length(args)]...)
 end
-lazyables(f, args′::Union{Base.RefValue, AbstractCollection{rank}}...) where {rank} = args′ # already "lazyabled"
+lazyables(f, args′::Union{Base.RefValue, AbstractCollection{layer}}...) where {layer} = args′ # already "lazyabled"
 
 # extract arguments without `Ref`
 _extract_norefs(ret::Tuple) = ret
@@ -39,23 +39,23 @@ extract_norefs(x...) = _extract_norefs((), x...)
 extract_norefs(x::AbstractCollection...) = x
 
 """
-    return_rank(f, args...)
+    return_layer(f, args...)
 
-Get returned rank.
+Get returned layer.
 """
-function return_rank(f, args...)
+function return_layer(f, args...)
     args′ = extract_norefs(lazyables(f, args...)...)
-    return_rank(LazyOperationType(f), args′...)
+    return_layer(LazyOperationType(f), args′...)
 end
-return_rank(::LazyAddLikeOperator, ::AbstractCollection{rank}...) where {rank} = rank
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{rank}...) where {rank} = rank
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}) = 0
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}) = -1
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
-    throw(ArgumentError("rank=-1 collections are used $(2+length(x)) times in multiplication"))
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{-1}) = -1
-return_rank(::LazyMulLikeOperator, ::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
-    throw(ArgumentError("rank=-1 collections are used $(1+length(x)) times in multiplication"))
+return_layer(::LazyAddLikeOperator, ::AbstractCollection{layer}...) where {layer} = layer
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{layer}...) where {layer} = layer
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}) = 0
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}) = -1
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
+    throw(ArgumentError("layer=-1 collections are used $(2+length(x)) times in multiplication"))
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{-1}) = -1
+return_layer(::LazyMulLikeOperator, ::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
+    throw(ArgumentError("layer=-1 collections are used $(1+length(x)) times in multiplication"))
 
 """
     return_dims(f, args...)
@@ -68,32 +68,32 @@ function return_dims(f, args...)
 end
 check_dims(x::Dims) = x
 check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-return_dims(::LazyAddLikeOperator, args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
-return_dims(::LazyMulLikeOperator, args::AbstractCollection{rank}...) where {rank} = check_dims(map(size, args)...)
+return_dims(::LazyAddLikeOperator, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
+return_dims(::LazyMulLikeOperator, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
 return_dims(::LazyMulLikeOperator, x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
 return_dims(::LazyMulLikeOperator, x::AbstractCollection{-1}) = size(x)
 
 
-struct LazyCollection{rank, F, Args <: Tuple, N} <: AbstractCollection{rank}
+struct LazyCollection{layer, F, Args <: Tuple, N} <: AbstractCollection{layer}
     f::F
     args::Args
     dims::NTuple{N, Int}
-    function LazyCollection{rank, F, Args, N}(f::F, args::Args, dims::NTuple{N, Int}) where {rank, F, Args, N}
-        new{rank::Int, F, Args, N}(f, args, dims)
+    function LazyCollection{layer, F, Args, N}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, F, Args, N}
+        new{layer::Int, F, Args, N}(f, args, dims)
     end
 end
 
-@inline function LazyCollection{rank}(f::F, args::Args, dims::NTuple{N, Int}) where {rank, F, Args, N}
-    LazyCollection{rank, F, Args, N}(f, args, dims)
+@inline function LazyCollection{layer}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, F, Args, N}
+    LazyCollection{layer, F, Args, N}(f, args, dims)
 end
 
 @generated function LazyCollection(f, args...)
     quote
         args′ = lazyables(f, args...)
         norefs = extract_norefs(args′...)
-        rank = return_rank(f, norefs...)
+        layer = return_layer(f, norefs...)
         dims = return_dims(f, norefs...)
-        LazyCollection{rank}(f, args′, dims)
+        LazyCollection{layer}(f, args′, dims)
     end
 end
 lazy(f, args...) = LazyCollection(f, args...)
@@ -147,7 +147,7 @@ function Base.Array(c::LazyCollection)
     A
 end
 
-show_type_name(c::LazyCollection) = "LazyCollection{$(whichrank(c))}"
+show_type_name(c::LazyCollection) = "LazyCollection{$(whichlayer(c))}"
 
 
 macro define_lazy_unary_operation(op)

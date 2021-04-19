@@ -1,12 +1,12 @@
 """
-    Collection(x, [Val(rank)])
+    Collection(x, [Val(layer)])
 """
-struct Collection{rank, V} <: AbstractCollection{rank}
+struct Collection{layer, V} <: AbstractCollection{layer}
     parent::V
 end
 
 # constructors
-Collection{rank}(v::V) where {rank, V} = Collection{rank, V}(v)
+Collection{layer}(v::V) where {layer, V} = Collection{layer, V}(v)
 Collection(v) = Collection{1}(v)
 
 Base.parent(c::Collection) = c.parent

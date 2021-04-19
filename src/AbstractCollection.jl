@@ -1,13 +1,13 @@
 """
-    AbstractCollection{rank}
+    AbstractCollection{layer}
 
 Supertype for collections.
 """
-abstract type AbstractCollection{rank} end
+abstract type AbstractCollection{layer} end
 
-whichrank(::AbstractCollection{rank}) where {rank} = rank
-whichrank(::Type{<: AbstractCollection{rank}}) where {rank} = rank
-whichrank(::Any) = -100 # just use low value
+whichlayer(::AbstractCollection{layer}) where {layer} = layer
+whichlayer(::Type{<: AbstractCollection{layer}}) where {layer} = layer
+whichlayer(::Any) = -100 # just use low value
 
 Base.eltype(c::AbstractCollection) = typeof(first(c)) # try to getindex
 # Above eltype throws error if collection is empty.
@@ -60,7 +60,7 @@ end
 # broadcast
 Broadcast.broadcastable(c::AbstractCollection) = error("AbstractCollection: Broadcast is not supported")
 
-function set!(dest::Union{AbstractVector, AbstractCollection{rank}}, src::AbstractCollection{rank}) where {rank}
+function set!(dest::Union{AbstractVector, AbstractCollection{layer}}, src::AbstractCollection{layer}) where {layer}
     @assert length(dest) == length(src)
     @simd for i in 1:length(dest)
         @inbounds dest[i] = src[i]
@@ -87,7 +87,7 @@ end
 
 show_type_name(c::AbstractCollection) = typeof(c)
 Base.summary(io::IO, c::AbstractCollection) =
-    print(io, Base.dims2string(size(c)), " ", show_type_name(c), " with rank=", whichrank(c), ":")
+    print(io, Base.dims2string(size(c)), " ", show_type_name(c), " with layer=", whichlayer(c), ":")
 
 function Base.show(io::IO, mime::MIME"text/plain", c::AbstractCollection)
     summary(io, c)
