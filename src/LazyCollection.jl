@@ -73,15 +73,13 @@ end
     LazyCollection{layer, T, F, Args, N}(f, args, dims)
 end
 
-@generated function LazyCollection(f, args...)
-    quote
-        args′ = lazyables(f, args...)
-        norefs = extract_norefs(args′...)
-        layer = return_layer(f, norefs...)
-        dims = return_dims(f, norefs...)
-        T = return_type(f, args′...)
-        LazyCollection{layer, T}(f, args′, dims)
-    end
+function LazyCollection(f, args...)
+    args′ = lazyables(f, args...)
+    norefs = extract_norefs(args′...)
+    layer = return_layer(f, norefs...)
+    dims = return_dims(f, norefs...)
+    T = return_type(f, args′...)
+    LazyCollection{layer, T}(f, args′, dims)
 end
 lazy(f, args...) = LazyCollection(f, args...)
 
@@ -98,13 +96,9 @@ end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
-@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args}, i::Int) where {Args}
-    exps = [:(_getindex(c.args[$j], i)) for j in 1:length(Args.parameters)]
-    quote
-        @_inline_meta
-        @boundscheck checkbounds(c, i)
-        @inbounds _propagate_lazy(c.f, $(exps...))
-    end
+@inline function Base.getindex(c::LazyCollection, i::Int)
+    @boundscheck checkbounds(c, i)
+    @inbounds _propagate_lazy(c.f, _getindex.(c.args, i)...)
 end
 
 show_type_name(c::LazyCollection{layer, T}) where {layer, T} = "LazyCollection{$layer, $T}"
