@@ -1,5 +1,6 @@
 """
-    Collection(x, [Val(layer)])
+    Collection(x)
+    Collection{layer}(x)
 """
 struct Collection{layer, T, V <: Union{AbstractVector{T}, AbstractCollection{<: Any, T}}} <: AbstractCollection{layer, T}
     parent::V
