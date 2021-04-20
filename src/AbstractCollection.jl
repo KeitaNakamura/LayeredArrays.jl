@@ -85,7 +85,7 @@ Base.summary(io::IO, c::AbstractCollection) =
 function Base.show(io::IO, mime::MIME"text/plain", c::AbstractCollection)
     summary(io, c)
     println(io)
-    Base.print_array(io, Array(c))
+    Base.print_array(io, reshape(Array(c), size(c)))
 end
 
 function Base.show(io::IO, c::AbstractCollection)

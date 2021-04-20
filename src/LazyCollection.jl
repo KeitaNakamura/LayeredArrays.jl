@@ -99,7 +99,7 @@ end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
-@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args, 1}, i::Int) where {Args}
+@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args}, i::Int) where {Args}
     exps = [:(_getindex(c.args[$j], i)) for j in 1:length(Args.parameters)]
     quote
         @_inline_meta
