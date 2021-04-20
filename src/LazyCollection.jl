@@ -106,15 +106,4 @@ _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
     end
 end
 
-# convert to array
-# this is needed for matrix type because `collect` is called by default
-function Base.Array(c::LazyCollection)
-    v = first(c)
-    A = Array{typeof(v)}(undef, size(c))
-    for i in eachindex(A)
-        @inbounds A[i] = c[i]
-    end
-    A
-end
-
 show_type_name(c::LazyCollection{layer, T}) where {layer, T} = "LazyCollection{$layer, $T}"
