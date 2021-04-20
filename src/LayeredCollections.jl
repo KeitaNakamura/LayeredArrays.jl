@@ -12,6 +12,7 @@ export
 
 include("AbstractCollection.jl")
 include("Collection.jl")
+include("RepeatedCollection.jl")
 include("AdjointCollection.jl")
 include("LazyCollection.jl")
 include("broadcast.jl")
