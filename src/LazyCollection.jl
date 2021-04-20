@@ -19,14 +19,8 @@ lazyable(::LazyOperationType, c::Base.RefValue, ::Val) = c
 lazyable(::LazyAddLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
 lazyable(::LazyAddLikeOperator, c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
 lazyable(::LazyMulLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
-lazyable(::LazyMulLikeOperator, c::AbstractCollection{0}, ::Val{1}) = Collection{1}(c) # 0 becomes 1 with other 1
 @generated function lazyables(f, args...)
     layer = maximum(whichlayer, args)
-    if minimum(whichlayer, args) == -1
-        if layer != -1
-            return :(throw(ArgumentError("layer=-1 collection cannot be computed with other layer collections.")))
-        end
-    end
     Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($layer))) for i in 1:length(args)]...)
 end
 lazyables(f, args′::Union{Base.RefValue, AbstractCollection{layer}}...) where {layer} = args′ # already "lazyabled"
@@ -47,15 +41,7 @@ function return_layer(f, args...)
     args′ = extract_norefs(lazyables(f, args...)...)
     return_layer(LazyOperationType(f), args′...)
 end
-return_layer(::LazyAddLikeOperator, ::AbstractCollection{layer}...) where {layer} = layer
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{layer}...) where {layer} = layer
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}) = 0
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}) = -1
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{0}, ::AbstractCollection{0}, x::AbstractCollection{0}...) =
-    throw(ArgumentError("layer=-1 collections are used $(2+length(x)) times in multiplication"))
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{-1}) = -1
-return_layer(::LazyMulLikeOperator, ::AbstractCollection{-1}, x::AbstractCollection{-1}...) =
-    throw(ArgumentError("layer=-1 collections are used $(1+length(x)) times in multiplication"))
+return_layer(::LazyOperationType, ::AbstractCollection{layer}...) where {layer} = layer
 
 """
     return_dims(f, args...)
@@ -68,10 +54,7 @@ function return_dims(f, args...)
 end
 check_dims(x::Dims) = x
 check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-return_dims(::LazyAddLikeOperator, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
-return_dims(::LazyMulLikeOperator, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
-return_dims(::LazyMulLikeOperator, x::AbstractCollection{0}, y::AbstractCollection{0}) = (length(x), length(y))
-return_dims(::LazyMulLikeOperator, x::AbstractCollection{-1}) = size(x)
+return_dims(::LazyOperationType, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
 
 @generated function return_type(f, args...)
     :($(Base._return_type(_propagate_lazy, (f, eltype.(args)...)))) # `_propagate_lazy` is defined at getindex
@@ -122,29 +105,6 @@ _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
         @_inline_meta
         @boundscheck checkbounds(c, i)
         @inbounds _propagate_lazy(c.f, $(exps...))
-    end
-end
-
-@generated function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, Args, 2}, ij::Vararg{Int, 2}) where {Args}
-    count = 0
-    exps = map(enumerate(Args.parameters)) do (k, T)
-        T <: Base.RefValue && return :(c.args[$k][])
-        T <: AbstractCollection{-1} && return :(c.args[$k][ij...])
-        T <: AbstractCollection && return :(c.args[$k][ij[$(count += 1)]])
-        error()
-    end
-    @assert count == 0 || count == 2
-    quote
-        @_inline_meta
-        @_propagate_inbounds_meta
-        @inbounds _propagate_lazy(c.f, $(exps...))
-    end
-end
-@inline function Base.getindex(c::LazyCollection{-1, <: Any, <: Any, <: Any, 2}, i::Int)
-    @boundscheck checkbounds(c, i)
-    @inbounds begin
-        I = CartesianIndices(size(c))[i...]
-        c[Tuple(I)...]
     end
 end
 
