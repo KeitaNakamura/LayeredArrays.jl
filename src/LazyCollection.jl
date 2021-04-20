@@ -44,34 +44,34 @@ end
 return_layer(::LazyOperationType, ::AbstractCollection{layer}...) where {layer} = layer
 
 """
-    return_dims(f, args...)
+    return_length(f, args...)
 
 Get returned dimensions.
 """
-function return_dims(f, args...)
+function return_length(f, args...)
     args′ = extract_norefs(lazyables(f, args...)...)
-    return_dims(LazyOperationType(f), args′...)
+    return_length(LazyOperationType(f), args′...)
 end
-check_dims(x::Dims) = x
-check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-return_dims(::LazyOperationType, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
+check_length(x::Int) = x
+check_length(x::Int, y::Int, z::Int...) = (@assert x == y; check_length(y, z...))
+return_length(::LazyOperationType, args::AbstractCollection{layer}...) where {layer} = check_length(map(length, args)...)
 
 @generated function return_type(f, args...)
     :($(Base._return_type(_propagate_lazy, (f, eltype.(args)...)))) # `_propagate_lazy` is defined at getindex
 end
 
 
-struct LazyCollection{layer, T, F, Args <: Tuple, N} <: AbstractCollection{layer, T}
+struct LazyCollection{layer, T, F, Args <: Tuple} <: AbstractCollection{layer, T}
     f::F
     args::Args
-    dims::NTuple{N, Int}
-    function LazyCollection{layer, T, F, Args, N}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, T, F, Args, N}
-        new{layer::Int, T, F, Args, N}(f, args, dims)
+    len::Int
+    function LazyCollection{layer, T, F, Args}(f::F, args::Args, len::Int) where {layer, T, F, Args}
+        new{layer::Int, T, F, Args}(f, args, len)
     end
 end
 
-@inline function LazyCollection{layer, T}(f::F, args::Args, dims::NTuple{N, Int}) where {layer, T, F, Args, N}
-    LazyCollection{layer, T, F, Args, N}(f, args, dims)
+@inline function LazyCollection{layer, T}(f::F, args::Args, len::Int) where {layer, T, F, Args}
+    LazyCollection{layer, T, F, Args}(f, args, len)
 end
 
 @generated function LazyCollection(f, args...)
@@ -79,16 +79,14 @@ end
         args′ = lazyables(f, args...)
         norefs = extract_norefs(args′...)
         layer = return_layer(f, norefs...)
-        dims = return_dims(f, norefs...)
+        len = return_length(f, norefs...)
         T = return_type(f, args′...)
-        LazyCollection{layer, T}(f, args′, dims)
+        LazyCollection{layer, T}(f, args′, len)
     end
 end
 lazy(f, args...) = LazyCollection(f, args...)
 
-Base.length(c::LazyCollection) = prod(c.dims)
-Base.size(c::LazyCollection) = c.dims
-Base.ndims(c::LazyCollection) = length(size(c))
+Base.length(c::LazyCollection) = c.len
 
 # this propagates lazy operation when any AbstractCollection is found
 # otherwise just normally call function `f`.
@@ -99,7 +97,7 @@ end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 @inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
 @inline _getindex(c::Base.RefValue, i::Int) = c[]
-@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args, 1}, i::Int) where {Args}
+@generated function Base.getindex(c::LazyCollection{<: Any, <: Any, <: Any, Args}, i::Int) where {Args}
     exps = [:(_getindex(c.args[$j], i)) for j in 1:length(Args.parameters)]
     quote
         @_inline_meta
