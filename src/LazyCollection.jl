@@ -16,9 +16,8 @@ end
 # add `Ref`s
 lazyable(::LazyOperationType, c, ::Val) = Ref(c)
 lazyable(::LazyOperationType, c::Base.RefValue, ::Val) = c
-lazyable(::LazyAddLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
+lazyable(::LazyOperationType, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
 lazyable(::LazyAddLikeOperator, c::AbstractCollection, ::Val) = throw(ArgumentError("addition like operation with different collections is not allowded"))
-lazyable(::LazyMulLikeOperator, c::AbstractCollection{layer}, ::Val{layer}) where {layer} = c
 @generated function lazyables(f, args...)
     layer = maximum(whichlayer, args)
     Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($layer))) for i in 1:length(args)]...)
