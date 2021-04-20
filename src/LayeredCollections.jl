@@ -1,5 +1,7 @@
 module LayeredCollections
 
+using LinearAlgebra
+
 using Base: @_propagate_inbounds_meta, @_inline_meta, @pure
 
 export
@@ -17,6 +19,7 @@ export
 include("utils.jl")
 include("AbstractCollection.jl")
 include("Collection.jl")
+include("AdjointCollection.jl")
 include("LazyCollection.jl")
 include("broadcast.jl")
 
