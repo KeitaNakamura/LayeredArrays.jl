@@ -54,8 +54,9 @@ end
 check_dims(x::Dims) = x
 check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
 return_dims(::LazyOperationType, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
+return_dims(::LazyMulLikeOperator, lhs::AbstractCollection{layer}, rhs::AdjointCollection{layer}) where {layer} = (length(lhs), length(rhs))
 
-@generated function return_type(f, args...)
+@generated function return_eltype(f, args...)
     :($(Base._return_type(_propagate_lazy, (f, eltype.(args)...)))) # `_propagate_lazy` is defined at getindex
 end
 
@@ -73,13 +74,18 @@ end
     LazyCollection{layer, T, F, Args, N}(f, args, dims)
 end
 
+preprocess(::Dims, args...) = args
+function preprocess((m, n)::Dims{2}, x::AbstractCollection, y::AdjointCollection)
+    repeat(x, outer = n), repeat(y, inner = m)
+end
+
 function LazyCollection(f, args...)
     args′ = lazyables(f, args...)
     norefs = extract_norefs(args′...)
     layer = return_layer(f, norefs...)
     dims = return_dims(f, norefs...)
-    T = return_type(f, args′...)
-    LazyCollection{layer, T}(f, args′, dims)
+    T = return_eltype(f, args′...)
+    LazyCollection{layer, T}(f, preprocess(dims, args′...), dims)
 end
 lazy(f, args...) = LazyCollection(f, args...)
 
