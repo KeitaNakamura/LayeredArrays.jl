@@ -30,6 +30,7 @@ end
 # getindex
 Base.IndexStyle(::Type{<: AbstractCollection}) = IndexLinear()
 Base.size(c::AbstractCollection) = (length(c),)
+Base.ndims(c::AbstractCollection) = length(size(c))
 Base.eachindex(c::AbstractCollection) = Base.OneTo(lastindex(c))
 Base.firstindex(c::AbstractCollection) = 1
 Base.lastindex(c::AbstractCollection) = length(c)

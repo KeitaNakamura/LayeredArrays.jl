@@ -91,7 +91,6 @@ lazy(f, args...) = LazyCollection(f, args...)
 
 Base.length(c::LazyCollection) = prod(c.dims)
 Base.size(c::LazyCollection) = c.dims
-Base.ndims(c::LazyCollection) = length(size(c))
 
 # this propagates lazy operation when any AbstractCollection is found
 # otherwise just normally call function `f`.

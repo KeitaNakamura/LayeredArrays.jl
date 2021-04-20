@@ -2,8 +2,11 @@ struct AdjointCollection{layer, T, V <: AbstractCollection{layer, T}} <: Abstrac
     parent::V
 end
 Base.parent(c::AdjointCollection) = c.parent
-LinearAlgebra.adjoint(c::AbstractCollection) = AdjointCollection(c)
 LinearAlgebra.adjoint(c::AdjointCollection) = parent(c)
+function LinearAlgebra.adjoint(c::AbstractCollection)
+    ndims(c) == 1 || throw(ArgumentError("adjoint N>1 collections not supported."))
+    AdjointCollection(c)
+end
 
 # getindex
 Base.length(c::AdjointCollection) = length(parent(c))
