@@ -8,15 +8,8 @@ export
 # AbstractCollection
     AbstractCollection,
 # Collection
-    Collection,
-# LazyCollection
-    LazyCollection,
-    LazyOperationType,
-    LazyAddLikeOperator,
-    LazyMulLikeOperator,
-    lazy
+    Collection
 
-include("utils.jl")
 include("AbstractCollection.jl")
 include("Collection.jl")
 include("AdjointCollection.jl")
