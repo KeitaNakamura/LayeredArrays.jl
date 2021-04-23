@@ -48,17 +48,19 @@ return_layer(::LazyOperationType, ::AbstractCollection{layer}...) where {layer} 
 Get returned dimensions.
 """
 function return_dims(f, args...)
-    args′ = extract_norefs(lazyables(f, args...)...)
-    return_dims(LazyOperationType(f), args′...)
+    map(length, Broadcast.combine_axes(args...))
 end
-check_dims(x::Dims) = x
-check_dims(x::Dims, y::Dims, z::Dims...) = (@assert x == y; check_dims(y, z...))
-return_dims(::LazyOperationType, args::AbstractCollection{layer}...) where {layer} = check_dims(map(size, args)...)
-return_dims(::LazyMulLikeOperator, lhs::AbstractCollection{layer}, rhs::AdjointCollection{layer}) where {layer} = (length(lhs), length(rhs))
 
-@generated function return_eltype(f, args...)
-    :($(Base._return_type(_propagate_lazy, (f, eltype.(args)...)))) # `_propagate_lazy` is defined at getindex
+function return_eltype(f, args...)
+    Base._return_type(_propagate_lazy, eltypes((f,args...)))
 end
+_eltype(x::AbstractCollection) = eltype(x)
+_eltype(x::Base.RefValue) = eltype(x)
+_eltype(x) = typeof(x)
+eltypes(::Tuple{}) = Tuple{}
+eltypes(t::Tuple{Any}) = Tuple{_eltype(t[1])}
+eltypes(t::Tuple{Any, Any}) = Tuple{_eltype(t[1]), _eltype(t[2])}
+eltypes(t::Tuple) = Tuple{_eltype(t[1]), eltypes(Base.tail(t)).types...}
 
 
 struct LazyCollection{layer, T, F, Args <: Tuple, N} <: AbstractCollection{layer, T}
@@ -74,10 +76,18 @@ end
     LazyCollection{layer, T, F, Args, N}(f, args, dims)
 end
 
-preprocess(::Dims, args...) = args
-function preprocess((m, n)::Dims{2}, x::AbstractCollection, y::AdjointCollection)
-    repeat(x, outer = n), repeat(y, inner = m)
+_newshape(dims::Dims, x::Base.RefValue) = x
+_newshape(dims::Dims{1}, x::AbstractCollection) = x
+_newshape(dims::Dims{2}, x::AbstractCollection) = repeat(x, outer = dims[2])
+_newshape(dims::Dims{2}, x::AdjointCollection) = repeat(x, inner = dims[1])
+function _newshape(dims::Dims{2}, x::LazyCollection{<: Any, <: Any, <: Any, <: Any, 2})
+    size(x) == dims && return repeat(x)
+    size(x, 1) == 1 && return repeat(x, inner = dims[1])
+    error() # unreachable
 end
+newshapes(dims::Dims, x::Tuple{Any}) = (_newshape(dims, x[1]),)
+newshapes(dims::Dims, x::Tuple{Any, Any}) = (_newshape(dims, x[1]), _newshape(dims, x[2]))
+newshapes(dims::Dims, x::Tuple) = (_newshape(dims, x[1]), newshapes(dims, Base.tail(x))...)
 
 function LazyCollection(f, args...)
     args′ = lazyables(f, args...)
@@ -85,7 +95,7 @@ function LazyCollection(f, args...)
     layer = return_layer(f, norefs...)
     dims = return_dims(f, norefs...)
     T = return_eltype(f, args′...)
-    LazyCollection{layer, T}(f, preprocess(dims, args′...), dims)
+    LazyCollection{layer, T}(f, newshapes(dims, args′), dims)
 end
 lazy(f, args...) = LazyCollection(f, args...)
 
@@ -99,11 +109,15 @@ Base.size(c::LazyCollection) = c.dims
         :(LazyCollection(f, args...)) : :(f(args...))
 end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
-@inline _getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
-@inline _getindex(c::Base.RefValue, i::Int) = c[]
+
+_getindex(c::AbstractCollection, i::Int) = (@_propagate_inbounds_meta; c[i])
+_getindex(c::Base.RefValue, i::Int) = c[]
+_getindex_broadcast(x::Tuple{Any}, i::Int) = (_getindex(x[1], i),)
+_getindex_broadcast(x::Tuple{Any, Any}, i::Int) = (_getindex(x[1], i), _getindex(x[2], i))
+_getindex_broadcast(x::Tuple, i::Int) = (_getindex(x[1], i), _getindex_broadcast(Base.tail(x), i)...)
 @inline function Base.getindex(c::LazyCollection, i::Int)
     @boundscheck checkbounds(c, i)
-    @inbounds _propagate_lazy(c.f, _getindex.(c.args, i)...)
+    @inbounds _propagate_lazy(c.f, _getindex_broadcast(c.args, i)...)
 end
 
 show_type_name(c::LazyCollection{layer, T}) where {layer, T} = "LazyCollection{$layer, $T}"
