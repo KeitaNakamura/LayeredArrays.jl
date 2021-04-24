@@ -10,6 +10,7 @@ export
 
 include("AbstractCollection.jl")
 include("Collection.jl")
+include("CollectionView.jl")
 include("RepeatedCollection.jl")
 include("AdjointCollection.jl")
 include("LazyCollection.jl")
