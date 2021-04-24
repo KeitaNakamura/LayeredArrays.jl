@@ -19,7 +19,7 @@ end
 function Base.getindex(x::RepeatedCollection, i::Int)
     @boundscheck checkbounds(x, i)
     inner_length = x.inner * length(parent(x))
-    j = rem(i-1, inner_length) + 1
-    k = div(j-1, x.inner) + 1
+    j = x.outer == 1 ? i : rem(i-1, inner_length) + 1
+    k = x.inner == 1 ? j : div(j-1, x.inner) + 1
     @inbounds parent(x)[k]
 end
