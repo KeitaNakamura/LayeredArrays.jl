@@ -77,7 +77,7 @@ function LazyLayeredArray(f, args...)
     norefs = extract_norefs(args′...)
     layer = return_layer(f, norefs...)
     T = return_eltype(f, args′...)
-    LazyLayeredArray{layer, T}(broadcasted(f, args′...))
+    LazyLayeredArray{layer, T}(Broadcast.broadcasted(f, args′...))
 end
 
 Base.size(x::LazyLayeredArray) = size(x.bc)
@@ -91,8 +91,8 @@ Base.axes(x::LazyLayeredArray) = axes(x.bc)
 end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 
-_getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[newindex(x,i)])
-_getindex(x::Adjoint{<: Any, <: AbstractLayeredArray}, i) = (@_propagate_inbounds_meta; x[newindex(x,i)])
+_getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
+_getindex(x::Adjoint{<: Any, <: AbstractLayeredArray}, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Base.RefValue, i) = x[]
 _getindex_broadcast(x::Tuple{Any}, i) = (_getindex(x[1], i),)
 _getindex_broadcast(x::Tuple{Any, Any}, i) = (_getindex(x[1], i), _getindex(x[2], i))
