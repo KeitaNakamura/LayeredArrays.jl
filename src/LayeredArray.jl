@@ -16,6 +16,8 @@ LayeredArray(v) = LayeredArray{1}(v)
 Base.parent(x::LayeredArray) = x.parent
 
 Base.size(x::LayeredArray) = size(parent(x))
+Base.axes(x::LayeredArray) = axes(parent(x))
+
 @inline function Base.getindex(x::LayeredArray, i::Integer...)
     @boundscheck checkbounds(x, i...)
     @inbounds parent(x)[i...]

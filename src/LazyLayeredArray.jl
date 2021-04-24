@@ -78,6 +78,7 @@ function LazyLayeredArray(f, args...)
 end
 
 Base.size(x::LazyLayeredArray) = size(x.bc)
+Base.axes(x::LazyLayeredArray) = axes(x.bc)
 
 # this propagates lazy operation when any AbstractLayeredArray is found
 # otherwise just normally call function `f`.
