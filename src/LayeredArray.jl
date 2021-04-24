@@ -1,6 +1,31 @@
 """
     LayeredArray(x)
     LayeredArray{layer}(x)
+
+Construct `LayeredArray` on `layer` which is equal to `1` by default.
+
+See also [`@layered`](@ref).
+
+# Examples
+```jldoctest
+julia> x = LayeredArray([1,2,3])
+3-element LayeredVector{1, Int64, Vector{Int64}}:
+ 1
+ 2
+ 3
+
+julia> y = LayeredArray{2}([4,5,6])
+3-element LayeredVector{2, Int64, Vector{Int64}}:
+ 4
+ 5
+ 6
+
+julia> x .* y
+3-element LazyLayeredVector{2, LazyLayeredVector{1, Int64, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{LayeredVector{1, Int64, Vector{Int64}}, Base.RefValue{Int64}}}}, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{Base.RefValue{LayeredVector{1, Int64, Vector{Int64}}}, LayeredVector{2, Int64, Vector{Int64}}}}}:
+ [4, 8, 12]
+ [5, 10, 15]
+ [6, 12, 18]
+```
 """
 struct LayeredArray{layer, T, N, A <: AbstractArray{T, N}} <: AbstractLayeredArray{layer, T, N}
     parent::A
@@ -28,6 +53,36 @@ end
     x
 end
 
+"""
+    @layered expr
+    @layered layer expr
+
+Construct `LayeredArray` on `layer` which is equal to `1` by default.
+This is equivalent to `LayeredArray{layer}(expr)`.
+
+See also [`LayeredArray`](@ref).
+
+# Examples
+```jldoctest
+julia> x = @layered [1,2,3]
+3-element LayeredVector{1, Int64, Vector{Int64}}:
+ 1
+ 2
+ 3
+
+julia> y = @layered 2 [4,5,6]
+3-element LayeredVector{2, Int64, Vector{Int64}}:
+ 4
+ 5
+ 6
+
+julia> x .* y
+3-element LazyLayeredVector{2, LazyLayeredVector{1, Int64, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{LayeredVector{1, Int64, Vector{Int64}}, Base.RefValue{Int64}}}}, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{Base.RefValue{LayeredVector{1, Int64, Vector{Int64}}}, LayeredVector{2, Int64, Vector{Int64}}}}}:
+ [4, 8, 12]
+ [5, 10, 15]
+ [6, 12, 18]
+```
+"""
 macro layered(layer::Int, ex)
     esc(:(LayeredArray{$layer}($ex)))
 end

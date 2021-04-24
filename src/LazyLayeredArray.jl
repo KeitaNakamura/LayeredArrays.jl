@@ -2,7 +2,7 @@
     LayeredCollections.LazyOperationType(f)
 
 This needs to be overrided for custom operator.
-Return `LazyAddLikeOperator()` or `LazyMulLikeOperator()`.
+Return `LayeredArrays.LazyAddLikeOperator()` or `LayeredArrays.LazyMulLikeOperator()`.
 """
 abstract type LazyOperationType end
 struct LazyAddLikeOperator <: LazyOperationType end
@@ -33,11 +33,6 @@ _extract_norefs(ret::Tuple, x, y...) = _extract_norefs((ret..., x), y...)
 extract_norefs(x...) = _extract_norefs((), x...)
 extract_norefs(x::AbstractLayeredArray...) = x
 
-"""
-    return_layer(f, args...)
-
-Get returned layer.
-"""
 function return_layer(f, args...)
     args′ = extract_norefs(lazyables(f, args...)...)
     return_layer(LazyOperationType(f), args′...)
