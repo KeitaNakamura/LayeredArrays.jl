@@ -12,10 +12,18 @@ whichlayer(::Type{<: AbstractLayeredArray{layer}}) where {layer} = layer
 whichlayer(::Type{<: Adjoint{<: Any, <: AbstractLayeredArray{layer}}}) where {layer} = layer
 whichlayer(::Any) = -100 # just use low value
 
-# getindex
-@inline function Base.getindex(x::AbstractLayeredArray{layer}, i::Union{Real, AbstractArray}...) where {layer}
+# getindex for slice
+# cannot overload `getindex` since `getindex(A::AbstractLayeredArray, i::Int...)` also calls it.
+# so following unexported `_getindex` is overloaded
+@inline function Base._getindex(::IndexCartesian, x::AbstractLayeredArray{layer}, i::Union{Real, AbstractArray}...) where {layer}
     @boundscheck checkbounds(x, i...)
     @inbounds LayeredArray{layer}(view(x, i...))
+end
+# following function fixes ambiguity
+@inline function Base._getindex(::IndexCartesian, A::AbstractLayeredArray, I::Int...)
+    @boundscheck checkbounds(A, I...) # generally _to_subscript_indices requires bounds checking
+    @inbounds r = getindex(A, Base._to_subscript_indices(A, I...)...)
+    r
 end
 
 function set!(dest::Union{AbstractVector, AbstractLayeredArray{layer}}, src::AbstractLayeredArray{layer}) where {layer}
