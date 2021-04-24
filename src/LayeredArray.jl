@@ -26,4 +26,3 @@ end
     x
 end
 
-short_type_name(::Type{<: LayeredArray{layer, T, N}}) where {layer, T, N} = "LayeredArray{$layer, $(short_type_name(T)), $N}"

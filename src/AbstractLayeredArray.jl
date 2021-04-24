@@ -24,9 +24,3 @@ function set!(dest::Union{AbstractVector, AbstractLayeredArray{layer}}, src::Abs
     end
     dest
 end
-
-short_type_name(x) = short_type_name(typeof(x))
-short_type_name(x::Type) = x
-function Base.summary(io::IO, x::AbstractLayeredArray)
-    print(io, Base.dims2string(size(x)), " ", "<layer=", whichlayer(x), "> ", short_type_name(x))
-end

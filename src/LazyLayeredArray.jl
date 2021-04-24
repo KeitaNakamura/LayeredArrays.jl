@@ -98,5 +98,3 @@ _getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base
     bc = x.bc
     @inbounds _propagate_lazy(bc.f, _getindex_broadcast(bc.args, CartesianIndex(I))...)
 end
-
-short_type_name(::Type{<: LazyLayeredArray{layer, T, N}}) where {layer, T, N} = "LazyLayeredArray{$layer, $(short_type_name(T)), $N}"
