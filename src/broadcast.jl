@@ -13,6 +13,6 @@ function Base.copy(bc::Broadcasted{LayeredArrayStyle{N}}) where {N}
     LazyLayeredArray(bc.f, bc.args...)
 end
 
-function Base.copyto!(dest::Union{AbstractVector, AbstractLayeredArray}, src::Broadcasted{LayeredArrayStyle{N}}) where {N}
+function Base.copyto!(dest::AbstractLayeredArray, src::Broadcasted{LayeredArrayStyle{N}}) where {N}
     set!(dest, copy(src))
 end
