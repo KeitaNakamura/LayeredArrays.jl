@@ -6,8 +6,7 @@ using Base: @_propagate_inbounds_meta, @_inline_meta, @pure
 
 export
     AbstractCollection,
-    Collection,
-    LazyCollection
+    Collection
 
 include("AbstractCollection.jl")
 include("Collection.jl")
