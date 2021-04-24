@@ -16,7 +16,9 @@ export
 # LazyLayeredArray
     LazyLayeredArray,
     LazyLayeredMatrix,
-    LazyLayeredVector
+    LazyLayeredVector,
+# macro
+    @layered
 
 include("AbstractLayeredArray.jl")
 include("LayeredArray.jl")

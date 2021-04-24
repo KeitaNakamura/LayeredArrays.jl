@@ -28,3 +28,9 @@ end
     x
 end
 
+macro layered(layer::Int, ex)
+    esc(:(LayeredArray{$layer}($ex)))
+end
+macro layered(ex)
+    esc(:(LayeredArray($ex)))
+end
