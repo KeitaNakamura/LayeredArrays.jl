@@ -6,7 +6,11 @@ using Base: @_propagate_inbounds_meta, @_inline_meta, @pure
 
 export
     AbstractLayeredArray,
-    LayeredArray
+    AbstractLayeredMatrix,
+    AbstractLayeredVector,
+    LayeredArray,
+    LayeredMatrix,
+    LayeredVector
 
 include("AbstractLayeredArray.jl")
 include("LayeredArray.jl")
