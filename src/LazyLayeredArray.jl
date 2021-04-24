@@ -58,14 +58,14 @@ eltypes(t::Tuple{Any, Any}) = Tuple{_eltype(t[1]), _eltype(t[2])}
 eltypes(t::Tuple) = Tuple{_eltype(t[1]), eltypes(Base.tail(t)).types...}
 
 
-struct LazyLayeredArray{layer, T, N, BC <: Broadcasted{LayeredArrayStyle{N}}} <: AbstractLayeredArray{layer, T, N}
+struct LazyLayeredArray{layer, T, N, BC <: Broadcasted{<: AbstractArrayStyle{N}}} <: AbstractLayeredArray{layer, T, N}
     bc::BC
     function LazyLayeredArray{layer, T, N, BC}(bc::BC) where {layer, T, N, BC}
         new{layer::Int, T, N, BC}(bc)
     end
 end
 
-@inline function LazyLayeredArray{layer, T}(bc::BC) where {layer, T, N, BC <: Broadcasted{LayeredArrayStyle{N}}}
+@inline function LazyLayeredArray{layer, T}(bc::BC) where {layer, T, N, BC <: Broadcasted{<: AbstractArrayStyle{N}}}
     LazyLayeredArray{layer, T, N, BC}(bc)
 end
 
