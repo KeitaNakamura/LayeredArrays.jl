@@ -1,5 +1,5 @@
 using LayeredCollections
-using LayeredCollections: LazyCollection
+using LayeredCollections: LazyCollection, CollectionView
 using Test
 
 include("AbstractCollection.jl")
