@@ -26,7 +26,8 @@ end
     r
 end
 
-function set!(dest::Union{AbstractVector, AbstractLayeredArray{layer}}, src::AbstractLayeredArray{layer}) where {layer}
+function set!(dest::AbstractLayeredArray, src::AbstractLayeredArray)
+    whichlayer(dest) == whichlayer(src) || throw(ArgumentError("layers must match in setting values, tried layer $(whichlayer(src)) -> $(whichlayer(dest))"))
     @simd for i in eachindex(dest, src)
         @inbounds dest[i] = src[i]
     end
