@@ -1,17 +1,25 @@
-import Base.Broadcast: BroadcastStyle, Broadcasted, broadcasted, broadcastable
+import Base.Broadcast:
+    AbstractArrayStyle,
+    BroadcastStyle,
+    Broadcasted,
+    broadcasted,
+    broadcastable,
+    instantiate,
+    newindex
 
-struct CollectionStyle <: BroadcastStyle end
+struct LayeredArrayStyle{N} <: Broadcast.AbstractArrayStyle{N} end
+(::Type{<: LayeredArrayStyle})(::Val{N}) where {N} = LayeredArrayStyle{N}()
 
-BroadcastStyle(::Type{<: AbstractCollection}) = CollectionStyle()
-BroadcastStyle(::CollectionStyle, ::BroadcastStyle) = CollectionStyle()
+BroadcastStyle(::Type{<: AbstractLayeredArray{<: Any, <: Any, N}}) where {N} = LayeredArrayStyle{N}()
 
-broadcastable(c::AbstractCollection) = c
-broadcastable(c::Broadcasted{CollectionStyle}) = copy(c)
+broadcastable(x::AbstractLayeredArray) = x
+broadcastable(x::Broadcasted{LayeredArrayStyle{N}}) where {N} = copy(x)
+instantiate(x::Broadcasted{LayeredArrayStyle{N}}) where {N} = x
 
-function Base.copy(bc::Broadcasted{CollectionStyle})
-    lazy(bc.f, bc.args...)
+function Base.copy(bc::Broadcasted{LayeredArrayStyle{N}}) where {N}
+    LazyLayeredArray(bc.f, bc.args...)
 end
 
-function Base.copyto!(dest::Union{AbstractVector, AbstractCollection}, src::Broadcasted{CollectionStyle})
+function Base.copyto!(dest::Union{AbstractVector, AbstractLayeredArray}, src::Broadcasted{LayeredArrayStyle{N}}) where {N}
     set!(dest, copy(src))
 end
