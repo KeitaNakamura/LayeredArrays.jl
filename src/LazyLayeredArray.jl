@@ -26,7 +26,7 @@ return_layer() = error() # unreachable
 return_layer(::Union{AbstractLayeredArray{layer}, Adjoint{<: Any, <: AbstractLayeredArray{layer}}}...) where {layer} = layer
 
 function return_eltype(f, args...)
-    T = Base._return_type(f, eltypes(args))
+    T = Base._return_type(_propagate_lazy, eltypes((f,args...)))
     if T == Union{}
         f(map(first, args)...)
         error() # unreachable
@@ -68,6 +68,14 @@ end
 Base.size(x::LazyLayeredArray) = size(x.bc)
 Base.axes(x::LazyLayeredArray) = axes(x.bc)
 
+# this propagates lazy operation when any AbstractLayeredArray is found
+# otherwise just normally call function `f`.
+@generated function _propagate_lazy(f, args...)
+    any([t <: AbstractLayeredArray || t <: Adjoint{<: Any, <: AbstractLayeredArray} for t in args]) ?
+    :(LazyLayeredArray(f, args...)) : :(f(args...))
+end
+_propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
+
 _getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Adjoint{<: Any, <: AbstractLayeredArray}, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Base.RefValue, i) = x[]
@@ -77,11 +85,12 @@ _getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base
 @inline function Base.getindex(x::LazyLayeredArray, I::Int...)
     @boundscheck checkbounds(x, I...)
     bc = x.bc
-    @inbounds bc.f(_getindex_broadcast(bc.args, CartesianIndex(I))...)
+    @inbounds _propagate_lazy(bc.f, _getindex_broadcast(bc.args, CartesianIndex(I))...)
 end
 
 for op in (:+, :-)
     @eval function Base.$op(x::AbstractLayeredArray, y::AbstractLayeredArray)
+        whichlayer(x) == whichlayer(y) || throw(ArgumentError("layers must match in $($op) operation"))
         broadcast($op, x, y)
     end
 end
