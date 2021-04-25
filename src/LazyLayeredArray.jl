@@ -1,47 +1,37 @@
-"""
-    LayeredCollections.LazyOperationType(f)
-
-This needs to be overrided for custom operator.
-Return `LayeredArrays.LazyAddLikeOperator()` or `LayeredArrays.LazyMulLikeOperator()`.
-"""
-abstract type LazyOperationType end
-struct LazyAddLikeOperator <: LazyOperationType end
-struct LazyMulLikeOperator <: LazyOperationType end
-LazyOperationType(::Any) = LazyAddLikeOperator()
-@pure function LazyOperationType(f::Function)
-    Base.operator_precedence(Symbol(f)) ≥ Base.operator_precedence(:*) ?
-        LazyMulLikeOperator() : LazyAddLikeOperator()
-end
-
 # add `Ref`s
-lazyable(::LazyOperationType, x, ::Val) = Ref(x)
-lazyable(::LazyOperationType, x::Base.RefValue, ::Val) = x
-lazyable(::LazyOperationType, x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
-lazyable(::LazyOperationType, x::Adjoint{<: Any, <: AbstractLayeredArray{layer}}, ::Val{layer}) where {layer} = x
-lazyable(::LazyAddLikeOperator, x::AbstractLayeredArray, ::Val) = throw(ArgumentError("addition like operation with different layer is not allowded"))
-lazyable(::LazyAddLikeOperator, x::Adjoint{<: Any, <: AbstractLayeredArray}, ::Val) = throw(ArgumentError("addition like operation with different layer is not allowded"))
+lazyable(x, ::Val) = Ref(x)
+lazyable(x::Base.RefValue, ::Val) = x
+lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
+lazyable(x::Adjoint{<: Any, <: AbstractLayeredArray{layer}}, ::Val{layer}) where {layer} = x
 @generated function lazyables(f, args...)
     layer = maximum(whichlayer, args)
-    Expr(:tuple, [:(lazyable(LazyOperationType(f), args[$i], Val($layer))) for i in 1:length(args)]...)
+    exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
+    quote
+        @_inline_meta
+        tuple($(exps...))
+    end
 end
-lazyables(f, args′::Union{Base.RefValue, AbstractLayeredArray{layer}}...) where {layer} = args′ # already "lazyabled"
 
 # extract arguments without `Ref`
 _extract_norefs(ret::Tuple) = ret
 _extract_norefs(ret::Tuple, x::Ref, y...) = _extract_norefs(ret, y...)
 _extract_norefs(ret::Tuple, x, y...) = _extract_norefs((ret..., x), y...)
 extract_norefs(x...) = _extract_norefs((), x...)
-extract_norefs(x::AbstractLayeredArray...) = x
 
 function return_layer(f, args...)
     args′ = extract_norefs(lazyables(f, args...)...)
-    return_layer(LazyOperationType(f), args′...)
+    return_layer(args′...)
 end
-return_layer(f) = error() # unreachable
-return_layer(::LazyOperationType, ::Union{AbstractLayeredArray{layer}, Adjoint{<: Any, <: AbstractLayeredArray{layer}}}...) where {layer} = layer
+return_layer() = error() # unreachable
+return_layer(::Union{AbstractLayeredArray{layer}, Adjoint{<: Any, <: AbstractLayeredArray{layer}}}...) where {layer} = layer
 
 function return_eltype(f, args...)
-    Base._return_type(_propagate_lazy, eltypes((f,args...)))
+    T = Base._return_type(f, eltypes(args))
+    if T == Union{}
+        f(map(first, args)...)
+        error() # unreachable
+    end
+    T
 end
 _eltype(x::AbstractLayeredArray) = eltype(x)
 _eltype(x::Adjoint{<: Any, <: AbstractLayeredArray}) = eltype(x)
@@ -78,14 +68,6 @@ end
 Base.size(x::LazyLayeredArray) = size(x.bc)
 Base.axes(x::LazyLayeredArray) = axes(x.bc)
 
-# this propagates lazy operation when any AbstractLayeredArray is found
-# otherwise just normally call function `f`.
-@generated function _propagate_lazy(f, args...)
-    any([t <: AbstractLayeredArray || t <: Adjoint{<: Any, <: AbstractLayeredArray} for t in args]) ?
-        :(LazyLayeredArray(f, args...)) : :(f(args...))
-end
-_propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
-
 _getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Adjoint{<: Any, <: AbstractLayeredArray}, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Base.RefValue, i) = x[]
@@ -95,5 +77,11 @@ _getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base
 @inline function Base.getindex(x::LazyLayeredArray, I::Int...)
     @boundscheck checkbounds(x, I...)
     bc = x.bc
-    @inbounds _propagate_lazy(bc.f, _getindex_broadcast(bc.args, CartesianIndex(I))...)
+    @inbounds bc.f(_getindex_broadcast(bc.args, CartesianIndex(I))...)
+end
+
+for op in (:+, :-)
+    @eval function Base.$op(x::AbstractLayeredArray, y::AbstractLayeredArray)
+        broadcast($op, x, y)
+    end
 end
