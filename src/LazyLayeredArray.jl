@@ -2,7 +2,6 @@
 lazyable(x, ::Val) = Ref(x)
 lazyable(x::Base.RefValue, ::Val) = x
 lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
-lazyable(x::Adjoint{<: Any, <: AbstractLayeredArray{layer}}, ::Val{layer}) where {layer} = x
 @generated function lazyables(f, args...)
     layer = maximum(whichlayer, args)
     exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
@@ -23,7 +22,7 @@ function return_layer(f, args...)
     return_layer(args′...)
 end
 return_layer() = error() # unreachable
-return_layer(::Union{AbstractLayeredArray{layer}, Adjoint{<: Any, <: AbstractLayeredArray{layer}}}...) where {layer} = layer
+return_layer(::AbstractLayeredArray{layer}...) where {layer} = layer
 
 function return_eltype(f, args...)
     T = Base._return_type(_propagate_lazy, eltypes((f,args...)))
@@ -34,7 +33,6 @@ function return_eltype(f, args...)
     T
 end
 _eltype(x::AbstractLayeredArray) = eltype(x)
-_eltype(x::Adjoint{<: Any, <: AbstractLayeredArray}) = eltype(x)
 _eltype(x::Base.RefValue) = eltype(x)
 _eltype(x) = typeof(x)
 eltypes(::Tuple{}) = Tuple{}
@@ -71,13 +69,12 @@ Base.axes(x::LazyLayeredArray) = axes(x.bc)
 # this propagates lazy operation when any AbstractLayeredArray is found
 # otherwise just normally call function `f`.
 @generated function _propagate_lazy(f, args...)
-    any([t <: AbstractLayeredArray || t <: Adjoint{<: Any, <: AbstractLayeredArray} for t in args]) ?
+    any([t <: AbstractLayeredArray for t in args]) ?
     :(LazyLayeredArray(f, args...)) : :(f(args...))
 end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 
 _getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
-_getindex(x::Adjoint{<: Any, <: AbstractLayeredArray}, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Base.RefValue, i) = x[]
 _getindex_broadcast(x::Tuple{Any}, i) = (_getindex(x[1], i),)
 _getindex_broadcast(x::Tuple{Any, Any}, i) = (_getindex(x[1], i), _getindex(x[2], i))

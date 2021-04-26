@@ -22,6 +22,7 @@ export
 
 include("AbstractLayeredArray.jl")
 include("LayeredArray.jl")
+include("AdjointLayeredArray.jl")
 include("broadcast.jl")
 include("LazyLayeredArray.jl")
 

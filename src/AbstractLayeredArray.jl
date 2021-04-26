@@ -9,9 +9,7 @@ const AbstractLayeredVector{layer, T} = AbstractLayeredArray{layer, T, 1}
 const AbstractLayeredMatrix{layer, T} = AbstractLayeredArray{layer, T, 2}
 
 whichlayer(::AbstractLayeredArray{layer}) where {layer} = layer
-whichlayer(::Adjoint{<: Any, <: AbstractLayeredArray{layer}}) where {layer} = layer
 whichlayer(::Type{<: AbstractLayeredArray{layer}}) where {layer} = layer
-whichlayer(::Type{<: Adjoint{<: Any, <: AbstractLayeredArray{layer}}}) where {layer} = layer
 whichlayer(::Any) = -100 # just use low value
 
 # getindex for slice
