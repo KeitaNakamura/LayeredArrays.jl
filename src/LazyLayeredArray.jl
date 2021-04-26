@@ -7,22 +7,9 @@ lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
     exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
     quote
         @_inline_meta
-        tuple($(exps...))
+        $layer, tuple($(exps...))
     end
 end
-
-# extract arguments without `Ref`
-_extract_norefs(ret::Tuple) = ret
-_extract_norefs(ret::Tuple, x::Ref, y...) = _extract_norefs(ret, y...)
-_extract_norefs(ret::Tuple, x, y...) = _extract_norefs((ret..., x), y...)
-extract_norefs(x...) = _extract_norefs((), x...)
-
-function return_layer(f, args...)
-    args′ = extract_norefs(lazyables(f, args...)...)
-    return_layer(args′...)
-end
-return_layer() = error() # unreachable
-return_layer(::AbstractLayeredArray{layer}...) where {layer} = layer
 
 function return_eltype(f, args...)
     T = Base._return_type(_propagate_lazy, eltypes((f,args...)))
@@ -56,9 +43,7 @@ const LazyLayeredMatrix{layer, T, BC <: Broadcasted{LayeredArrayStyle{2}}} = Laz
 end
 
 function LazyLayeredArray(f, args...)
-    args′ = lazyables(f, args...)
-    norefs = extract_norefs(args′...)
-    layer = return_layer(f, norefs...)
+    layer, args′ = lazyables(f, args...)
     T = return_eltype(f, args′...)
     LazyLayeredArray{layer, T}(Broadcast.broadcasted(f, args′...))
 end
