@@ -88,6 +88,6 @@ end
 for op in (:+, :-)
     @eval function Base.$op(x::AbstractLayeredArray, y::AbstractLayeredArray)
         whichlayer(x) == whichlayer(y) || throw(ArgumentError("layers must match in $($op) operation"))
-        broadcast($op, x, y)
+        LayeredArray{whichlayer(x)}(map($op, x, y))
     end
 end
