@@ -15,7 +15,7 @@ function return_eltype(f, args...)
     T = Base._return_type(_propagate_lazy, eltypes((f,args...)))
     if T == Union{}
         f(map(first, args)...)
-        error() # unreachable
+        @unreachable
     end
     T
 end

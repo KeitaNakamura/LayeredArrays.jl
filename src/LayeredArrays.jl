@@ -20,6 +20,7 @@ export
 # macro
     @layered
 
+include("helpers.jl")
 include("AbstractLayeredArray.jl")
 include("LayeredArray.jl")
 include("AdjointLayeredArray.jl")
