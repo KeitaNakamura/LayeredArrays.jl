@@ -1,5 +1,7 @@
 """
     AbstractLayeredArray{layer, T, N}
+
+Supertype for `N`-dimensional layered arrays with elements of type `T`.
 """
 abstract type AbstractLayeredArray{layer, T, N} <: AbstractArray{T, N} end
 
