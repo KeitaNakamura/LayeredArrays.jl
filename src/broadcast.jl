@@ -6,13 +6,13 @@ struct LayeredArrayStyle{N} <: AbstractArrayStyle{N} end
 Broadcast.BroadcastStyle(::Type{<: AbstractLayeredArray{<: Any, <: Any, N}}) where {N} = LayeredArrayStyle{N}()
 
 Broadcast.broadcastable(x::AbstractLayeredArray) = x
-Broadcast.broadcastable(x::Broadcasted{LayeredArrayStyle{N}}) where {N} = copy(x)
-Broadcast.instantiate(x::Broadcasted{LayeredArrayStyle{N}}) where {N} = x
+Broadcast.broadcastable(x::Broadcasted{<: LayeredArrayStyle}) = copy(x)
+Broadcast.instantiate(x::Broadcasted{<: LayeredArrayStyle}) = x
 
-function Base.copy(bc::Broadcasted{LayeredArrayStyle{N}}) where {N}
+function Base.copy(bc::Broadcasted{<: LayeredArrayStyle})
     LazyLayeredArray(bc.f, bc.args...)
 end
 
-function Base.copyto!(dest::AbstractLayeredArray, src::Broadcasted{LayeredArrayStyle{N}}) where {N}
+function Base.copyto!(dest::AbstractLayeredArray, src::Broadcasted{<: LayeredArrayStyle})
     set!(dest, copy(src))
 end
