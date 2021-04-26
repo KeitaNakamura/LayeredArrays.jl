@@ -2,7 +2,7 @@
     LayeredArray(x)
     LayeredArray{layer}(x)
 
-Construct `LayeredArray` on `layer` which is equal to `1` by default.
+Construct `LayeredArray` on `layer` (`layer = 1` by default).
 
 See also [`@layered`](@ref).
 
@@ -57,7 +57,7 @@ end
     @layered expr
     @layered layer expr
 
-Construct `LayeredArray` on `layer` which is equal to `1` by default.
+Construct `LayeredArray` on `layer` (`layere = 1` by default).
 This is equivalent to `LayeredArray{layer}(expr)`.
 
 See also [`LayeredArray`](@ref).
