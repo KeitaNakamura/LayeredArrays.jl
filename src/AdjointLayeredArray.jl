@@ -1,9 +1,8 @@
 struct AdjointLayeredArray{layer, T, A <: AbstractLayeredArray{layer, T}} <: AbstractLayeredMatrix{layer, T}
     parent::A
     function AdjointLayeredArray{layer, T, A}(parent::A) where {layer, T, A}
-        x = new{layer, T, A}(parent)
-        layerof(x) # check layer
-        x
+        layer > 0 || throw(ArgumentError("layer must be `layer > 0`, got $layer"))
+        new{layer, T, A}(parent)
     end
 end
 
