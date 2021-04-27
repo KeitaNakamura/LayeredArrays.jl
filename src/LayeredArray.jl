@@ -29,6 +29,11 @@ julia> x .* y
 """
 struct LayeredArray{layer, T, N, A <: AbstractArray{T, N}} <: AbstractLayeredArray{layer, T, N}
     parent::A
+    function LayeredArray{layer, T, N, A}(parent::A) where {layer, T, N, A}
+        x = new{layer, T, N, A}(parent)
+        layerof(x) # check layer
+        x
+    end
 end
 
 const LayeredVector{layer, T, A <: AbstractVector{T}} = LayeredArray{layer, T, 1, A}
