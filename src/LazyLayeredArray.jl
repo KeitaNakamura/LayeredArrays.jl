@@ -3,7 +3,7 @@ lazyable(x, ::Val) = Ref(x)
 lazyable(x::Base.RefValue, ::Val) = x
 lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
 @generated function lazyables(f, args...)
-    layer = maximum(whichlayer, args)
+    layer = maximum(layerof, args)
     exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
     quote
         @_inline_meta
@@ -72,7 +72,7 @@ end
 
 for op in (:+, :-)
     @eval function Base.$op(x::AbstractLayeredArray, y::AbstractLayeredArray)
-        whichlayer(x) == whichlayer(y) || throw(ArgumentError("layers must match in $($op) operation"))
-        LayeredArray{whichlayer(x)}(map($op, x, y))
+        layerof(x) == layerof(y) || throw(ArgumentError("layers must match in $($op) operation"))
+        LayeredArray{layerof(x)}(map($op, x, y))
     end
 end

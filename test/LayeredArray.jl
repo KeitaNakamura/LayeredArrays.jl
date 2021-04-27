@@ -1,6 +1,6 @@
 @testset "LayeredArray" begin
     c = LayeredArray([2,6,4])
-    @test LayeredArrays.whichlayer(c) == 1
+    @test layerof(c) == 1
     # getindex
     for i in eachindex(c)
         @test (@inferred c[i])::Int == [2,6,4][i]

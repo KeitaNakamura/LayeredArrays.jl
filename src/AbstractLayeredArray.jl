@@ -8,9 +8,9 @@ abstract type AbstractLayeredArray{layer, T, N} <: AbstractArray{T, N} end
 const AbstractLayeredVector{layer, T} = AbstractLayeredArray{layer, T, 1}
 const AbstractLayeredMatrix{layer, T} = AbstractLayeredArray{layer, T, 2}
 
-whichlayer(::AbstractLayeredArray{layer}) where {layer} = layer
-whichlayer(::Type{<: AbstractLayeredArray{layer}}) where {layer} = layer
-whichlayer(::Any) = -100 # just use low value
+layerof(::AbstractLayeredArray{layer}) where {layer} = layer
+layerof(::Type{<: AbstractLayeredArray{layer}}) where {layer} = layer
+layerof(::Any) = -100 # just use low value
 
 # getindex for slice
 # cannot overload `getindex` since `getindex(A::AbstractLayeredArray, i::Int...)` also calls it.
@@ -27,7 +27,7 @@ end
 end
 
 function set!(dest::AbstractLayeredArray, src::AbstractLayeredArray)
-    whichlayer(dest) == whichlayer(src) || throw(ArgumentError("layers must match in setting values, tried layer $(whichlayer(src)) -> $(whichlayer(dest))"))
+    layerof(dest) == layerof(src) || throw(ArgumentError("layers must match in setting values, tried layer $(layerof(src)) -> $(layerof(dest))"))
     @simd for i in eachindex(dest, src)
         @inbounds dest[i] = src[i]
     end

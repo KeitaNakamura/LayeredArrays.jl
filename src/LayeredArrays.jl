@@ -9,6 +9,7 @@ export
     AbstractLayeredArray,
     AbstractLayeredMatrix,
     AbstractLayeredVector,
+    layerof,
 # LayeredArray
     LayeredArray,
     LayeredMatrix,
