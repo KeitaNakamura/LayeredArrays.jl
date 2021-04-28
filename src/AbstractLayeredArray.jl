@@ -8,8 +8,8 @@ abstract type AbstractLayeredArray{layer, T, N} <: AbstractArray{T, N} end
 const AbstractLayeredVector{layer, T} = AbstractLayeredArray{layer, T, 1}
 const AbstractLayeredMatrix{layer, T} = AbstractLayeredArray{layer, T, 2}
 
-layerof(::AbstractLayeredArray{layer}) where {layer} = (layer > 0 || error("layer must be `layer > 0`, got $layer"); layer)
-layerof(::Type{<: AbstractLayeredArray{layer}}) where {layer} = (layer > 0 || error("layer must be `layer > 0`, got $layer"); layer)
+layerof(::AbstractLayeredArray{layer}) where {layer} = layer
+layerof(::Type{<: AbstractLayeredArray{layer}}) where {layer} = layer
 layerof(::Any) = 0 # bottom layer
 
 # getindex for slice

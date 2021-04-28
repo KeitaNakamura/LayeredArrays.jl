@@ -30,9 +30,8 @@ julia> x .* y
 struct LayeredArray{layer, T, N, A <: AbstractArray{T, N}} <: AbstractLayeredArray{layer, T, N}
     parent::A
     function LayeredArray{layer, T, N, A}(parent::A) where {layer, T, N, A}
-        x = new{layer, T, N, A}(parent)
-        layerof(x) # check layer
-        x
+        layer > 0 || throw(ArgumentError("layer must be `layer > 0`, got $layer"))
+        new{layer, T, N, A}(parent)
     end
 end
 
