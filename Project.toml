@@ -1,7 +1,7 @@
 name = "LayeredArrays"
 uuid = "79e1fe28-acea-40c6-a871-ce7bc59311e1"
 authors = ["Keita Nakamura <keita.nakamura.1109@gmail.com>"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
