@@ -5,49 +5,38 @@
 LayeredArrays provides layer-wise array computation written in the [Julia programming language](https://julialang.org).
 The layers have hierarchical structure, and lower layers can be accessed by using `getindex` in `AbstractLayeredArray`.
 All types except subtypes of `AbstractLayeredArray` are on bottom layer `0`.
-The layer-wise operations are simply available by using [`broadcast operations`](https://docs.julialang.org/en/v1/manual/arrays/#Broadcasting), where operations are performed in order from the highest to the lowest layer.
-For example, we have three vectors on layer 1 and 2:
+The layer-wise operations are simply available by using [`broadcast operations`](https://docs.julialang.org/en/v1/manual/arrays/#Broadcasting).
+This framework is useful for following index notation.
 
 ```julia
-julia> x = @layered 1 ["a", "b", "c"]
-3-element LayeredVector{1, String, Vector{String}}:
- "a"
- "b"
- "c"
+julia> xᵢ = @layered 3 [1,2,3]
+3-element LayeredVector{3, Int64, Vector{Int64}}:
+ 1
+ 2
+ 3
 
-julia> y = @layered 1 ["d", "e", "f"]
-3-element LayeredVector{1, String, Vector{String}}:
- "d"
- "e"
- "f"
+julia> yⱼ = @layered 2 [4,5,6]
+3-element LayeredVector{2, Int64, Vector{Int64}}:
+ 4
+ 5
+ 6
 
-julia> z = @layered 2 ["g", "h", "i"]
-3-element LayeredVector{2, String, Vector{String}}:
- "g"
- "h"
- "i"
-```
+julia> zₖ = @layered 1 [7,8,9]
+3-element LayeredVector{1, Int64, Vector{Int64}}:
+ 7
+ 8
+ 9
 
-The broadcasting vector multiplication for those vectors are then computed as
+julia> Aᵢⱼₖ = @. xᵢ * yⱼ + zₖ * yⱼ;                   # layerof(Aᵢⱼₖ) == 3
 
-```julia
-julia> @. x * y # equal to built-in Array for operations on the same layers
-3-element LazyLayeredVector{1, String, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{LayeredVector{1, String, Vector{String}}, LayeredVector{1, String, Vector{String}}}}}:
- "ad"
- "be"
- "cf"
+julia> Aᵢⱼₖ[1] == @. xᵢ[1] * yⱼ + zₖ * yⱼ             # layerof(Aᵢⱼₖ[1]) == 2
+true
 
-julia> @. x * z # broadcasting operations on each layer
-3-element LazyLayeredVector{2, LazyLayeredVector{1, String, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{LayeredVector{1, String, Vector{String}}, Base.RefValue{String}}}}, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{Base.RefValue{LayeredVector{1, String, Vector{String}}}, LayeredVector{2, String, Vector{String}}}}}:
- ["ag", "bg", "cg"]
- ["ah", "bh", "ch"]
- ["ai", "bi", "ci"]
+julia> Aᵢⱼₖ[1][2] == @. xᵢ[1] * yⱼ[2] + zₖ * yⱼ[2]    # layerof(Aᵢⱼₖ[1][2]) == 1
+true
 
-julia> @. x * y * z
-3-element LazyLayeredVector{2, LazyLayeredVector{1, String, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{LayeredVector{1, String, Vector{String}}, LayeredVector{1, String, Vector{String}}, Base.RefValue{String}}}}, Base.Broadcast.Broadcasted{LayeredArrays.LayeredArrayStyle{1}, Nothing, typeof(*), Tuple{Base.RefValue{LayeredVector{1, String, Vector{String}}}, Base.RefValue{LayeredVector{1, String, Vector{String}}}, LayeredVector{2, String, Vector{String}}}}}:
- ["adg", "beg", "cfg"]
- ["adh", "beh", "cfh"]
- ["adi", "bei", "cfi"]
+julia> Aᵢⱼₖ[1][2][3] == xᵢ[1] * yⱼ[2] + zₖ[3] * yⱼ[2] # layerof(Aᵢⱼₖ[1][2][3]) == 0
+true
 ```
 
 Note that the layer-wise broadcasting operations are always lazily evaluated.
@@ -55,7 +44,7 @@ Note that the layer-wise broadcasting operations are always lazily evaluated.
 ## Installation
 
 ```julia
-pkg> add https://github.com/KeitaNakamura/LayeredArrays.jl.git
+pkg> add LayeredArrays
 ```
 
 ## Types and Functions
