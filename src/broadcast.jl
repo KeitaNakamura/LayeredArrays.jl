@@ -10,7 +10,10 @@ Broadcast.broadcastable(x::Broadcasted{<: LayeredArrayStyle}) = copy(x)
 Broadcast.instantiate(x::Broadcasted{<: LayeredArrayStyle}) = x
 
 function Base.copy(bc::Broadcasted{<: LayeredArrayStyle})
-    LazyLayeredArray(bc.f, bc.args...)
+    f, args = bc.f, bc.args
+    layer, args′ = lazyables(f, args...)
+    T = return_eltype(f, args′...)
+    LazyLayeredArray{layer, T}(Broadcast.broadcasted(f, args′...))
 end
 
 function Base.copyto!(dest::AbstractLayeredArray, src::Broadcasted{<: LayeredArrayStyle})
