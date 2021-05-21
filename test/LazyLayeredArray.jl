@@ -19,6 +19,9 @@ end
     check_getindex(@inferred((layer1 .+ 2*layer1))::LazyLayeredArray{1}, @. data1 + 2*data1)
     check_getindex(@inferred((layer1.*layer1 .+ layer1.*layer1))::LazyLayeredArray{1}, 2 * (data1 .* data1))
     check_getindex(@inferred((layer1.*layer1 .- layer1.*layer1))::LazyLayeredArray{1}, 0 * (data1 .* data1))
+    ## with broadcasted object
+    check_getindex(@inferred((1 .+ 1) .+ layer1)::LazyLayeredArray{1}, (1 .+ 1) .+ data1)
+    check_getindex(@inferred(([1,2,3] .+ 1) .* layer1)::LazyLayeredArray{1}, Ref([1,2,3] .+ 1) .* data1)
     # custom type
     data1′ = [2,4,6]
     layer1′ = MyType(data1′)

@@ -2,6 +2,12 @@
 lazyable(x, ::Val) = Ref(x)
 lazyable(x::Base.RefValue, ::Val) = x
 lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
+@generated function lazyable(x::Broadcasted{<: Any, <: Any, <: Any, Tup}, ::Val) where {Tup <: Tuple}
+    any(T -> T <: AbstractLayeredArray, Tup.parameters) && return :(@unreachable)
+    quote
+        Ref(copy(x))
+    end
+end
 @generated function lazyables(f, args...)
     layer = maximum(layerof, args)
     exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
