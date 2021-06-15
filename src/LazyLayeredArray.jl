@@ -17,21 +17,17 @@ end
     end
 end
 
+_eltype(x::AbstractLayeredArray) = eltype(x)
+_eltype(x::Base.RefValue) = eltype(x)
+_eltype(x) = typeof(x)
 function return_eltype(f, args...)
-    T = Base._return_type(_propagate_lazy, eltypes((f,args...)))
+    T = Base._return_type(_propagate_lazy, Tuple{apply2all(_eltype, (f,args...))...})
     if T == Union{}
         f(map(first, args)...)
         @unreachable
     end
     T
 end
-_eltype(x::AbstractLayeredArray) = eltype(x)
-_eltype(x::Base.RefValue) = eltype(x)
-_eltype(x) = typeof(x)
-eltypes(::Tuple{}) = Tuple{}
-eltypes(t::Tuple{Any}) = Tuple{_eltype(t[1])}
-eltypes(t::Tuple{Any, Any}) = Tuple{_eltype(t[1]), _eltype(t[2])}
-eltypes(t::Tuple) = Tuple{_eltype(t[1]), eltypes(Base.tail(t)).types...}
 
 
 struct LazyLayeredArray{layer, T, N, BC <: Broadcasted{<: AbstractArrayStyle{N}}} <: AbstractLayeredArray{layer, T, N}
@@ -59,21 +55,21 @@ Base.axes(x::LazyLayeredArray) = axes(x.bc)
 
 # this propagates lazy operation when any AbstractLayeredArray is found
 # otherwise just normally call function `f`.
-@generated function _propagate_lazy(f, args...)
-    any([t <: AbstractLayeredArray for t in args]) ?
-    :(LazyLayeredArray(f, args...)) : :(f(args...))
-end
+layeredarray_or_nothing(x::AbstractLayeredArray) = x
+layeredarray_or_nothing(x) = nothing
+__propagate_lazy(::Tuple{Vararg{Nothing}}, f, args) = f(args...)
+__propagate_lazy(::Tuple, f, args) = LazyLayeredArray(f, args...)
+_propagate_lazy(f, args...) = __propagate_lazy(apply2all(layeredarray_or_nothing, args), f, args)
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
+_propagate_lazy(f) = @unreachable
 
 _getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
 _getindex(x::Base.RefValue, i) = x[]
-_getindex_broadcast(x::Tuple{Any}, i) = (_getindex(x[1], i),)
-_getindex_broadcast(x::Tuple{Any, Any}, i) = (_getindex(x[1], i), _getindex(x[2], i))
-_getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base.tail(x), i)...)
 @inline function Base.getindex(x::LazyLayeredArray, I::Int...)
     @boundscheck checkbounds(x, I...)
     bc = x.bc
-    @inbounds _propagate_lazy(bc.f, _getindex_broadcast(bc.args, CartesianIndex(I))...)
+    f(x) = _getindex(x, CartesianIndex(I))
+    @inbounds _propagate_lazy(bc.f, apply2all(f, bc.args)...)
 end
 
 for op in (:+, :-)
