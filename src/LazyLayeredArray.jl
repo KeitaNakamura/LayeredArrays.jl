@@ -8,13 +8,12 @@ lazyable(x::AbstractLayeredArray{layer}, ::Val{layer}) where {layer} = x
         Ref(copy(x))
     end
 end
-@generated function lazyables(f, args...)
-    layer = maximum(layerof, args)
-    exps = [:(lazyable(args[$i], Val($layer))) for i in 1:length(args)]
-    quote
-        @_inline_meta
-        $layer, tuple($(exps...))
-    end
+maxlayer(args...) = maximum(apply2all(layerof, args))
+function lazyables(args...)
+    layer = maxlayer(args...)
+    layer_val = Val(layer)
+    f(x) = lazyable(x, layer_val)
+    layer, apply2all(f, args)
 end
 
 _eltype(x::AbstractLayeredArray) = eltype(x)
@@ -45,7 +44,7 @@ const LazyLayeredMatrix{layer, T, BC <: Broadcasted{LayeredArrayStyle{2}}} = Laz
 end
 
 function LazyLayeredArray(f, args...)
-    layer, args′ = lazyables(f, args...)
+    layer, args′ = lazyables(args...)
     T = return_eltype(f, args′...)
     LazyLayeredArray{layer, T}(Broadcast.broadcasted(f, args′...))
 end
