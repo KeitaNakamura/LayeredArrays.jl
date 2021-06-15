@@ -55,11 +55,10 @@ Base.axes(x::LazyLayeredArray) = axes(x.bc)
 
 # this propagates lazy operation when any AbstractLayeredArray is found
 # otherwise just normally call function `f`.
-layeredarray_or_nothing(x::AbstractLayeredArray) = x
-layeredarray_or_nothing(x) = nothing
-__propagate_lazy(::Tuple{Vararg{Nothing}}, f, args) = f(args...)
-__propagate_lazy(::Tuple, f, args) = LazyLayeredArray(f, args...)
-_propagate_lazy(f, args...) = __propagate_lazy(apply2all(layeredarray_or_nothing, args), f, args)
+@generated function _propagate_lazy(f, args...)
+    any([t <: AbstractLayeredArray for t in args]) ?
+        :(LazyLayeredArray(f, args...)) : :(f(args...))
+end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 _propagate_lazy(f) = @unreachable
 
