@@ -41,8 +41,8 @@ struct LazyLayeredArray{layer, T, N, BC <: Broadcasted{<: AbstractArrayStyle{N}}
     end
 end
 
-const LazyLayeredVector{layer, T, BC <: Broadcasted{LayeredArrayStyle{1}}} = LazyLayeredArray{layer, T, 1, BC}
-const LazyLayeredMatrix{layer, T, BC <: Broadcasted{LayeredArrayStyle{2}}} = LazyLayeredArray{layer, T, 2, BC}
+const LazyLayeredVector{layer, T} = LazyLayeredArray{layer, T, 1, <: Broadcasted{LayeredArrayStyle{1}}}
+const LazyLayeredMatrix{layer, T} = LazyLayeredArray{layer, T, 2, <: Broadcasted{LayeredArrayStyle{2}}}
 
 @inline function LazyLayeredArray{layer, T}(bc::BC) where {layer, T, N, BC <: Broadcasted{<: AbstractArrayStyle{N}}}
     LazyLayeredArray{layer, T, N, BC}(bc)
