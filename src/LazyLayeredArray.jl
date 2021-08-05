@@ -65,11 +65,12 @@ Base.axes(x::LazyLayeredArray) = axes(x.bc)
 end
 _propagate_lazy(f, arg) = f(arg) # this prevents too much propagation
 
-_getindex(x::AbstractLayeredArray, i) = (@_propagate_inbounds_meta; x[Broadcast.newindex(x,i)])
-_getindex(x::Base.RefValue, i) = x[]
-_getindex_broadcast(x::Tuple{Any}, i) = (_getindex(x[1], i),)
-_getindex_broadcast(x::Tuple{Any, Any}, i) = (_getindex(x[1], i), _getindex(x[2], i))
-_getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base.tail(x), i)...)
+@inline @propagate_inbounds _getindex(x::AbstractLayeredArray, i) = x[Broadcast.newindex(x,i)]
+@inline @propagate_inbounds _getindex(x::AbstractLayeredVector, i::CartesianIndex{1}) = x[i[1]]
+@inline @propagate_inbounds _getindex(x::Base.RefValue, i) = x[]
+@inline @propagate_inbounds _getindex_broadcast(x::Tuple{Any}, i) = (_getindex(x[1], i),)
+@inline @propagate_inbounds _getindex_broadcast(x::Tuple{Any, Any}, i) = (_getindex(x[1], i), _getindex(x[2], i))
+@inline @propagate_inbounds _getindex_broadcast(x::Tuple, i) = (_getindex(x[1], i), _getindex_broadcast(Base.tail(x), i)...)
 @inline function Base.getindex(x::LazyLayeredArray, I::Int...)
     @boundscheck checkbounds(x, I...)
     bc = x.bc

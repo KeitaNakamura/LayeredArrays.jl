@@ -2,7 +2,7 @@ module LayeredArrays
 
 using LinearAlgebra
 
-using Base: @_propagate_inbounds_meta, @_inline_meta
+using Base: @_propagate_inbounds_meta, @_inline_meta, @propagate_inbounds
 
 export
 # AbstractLayeredArray
