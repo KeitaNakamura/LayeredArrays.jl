@@ -33,3 +33,7 @@ function set!(dest::AbstractLayeredArray, src::AbstractLayeredArray)
     end
     dest
 end
+
+function Base.similar(dest::AbstractLayeredArray{layer}, ::Type{ElType}, dims::Tuple{Vararg{Int}}) where {layer, ElType}
+    LayeredArray{layer}(Array{ElType}(undef, dims))
+end
